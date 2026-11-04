@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_04_100300) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_04_100400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -48,6 +48,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_100300) do
     t.index ["card_number"], name: "index_readers_on_card_number", unique: true
     t.index ["email"], name: "index_readers_on_email", unique: true
     t.check_constraint "card_number::text ~ '^[0-9]{6}$'::text", name: "readers_card_number_six_digits"
+  end
+
+  create_table "reminders", force: :cascade do |t|
+    t.bigint "borrowing_id", null: false
+    t.string "kind", null: false
+    t.datetime "sent_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["borrowing_id", "kind"], name: "index_reminders_on_borrowing_id_and_kind", unique: true
   end
 
   create_table "solid_queue_batch_executions", force: :cascade do |t|
@@ -202,6 +211,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_100300) do
 
   add_foreign_key "borrowings", "books"
   add_foreign_key "borrowings", "readers"
+  add_foreign_key "reminders", "borrowings"
   add_foreign_key "solid_queue_batch_executions", "solid_queue_batches", column: "batch_id", on_delete: :cascade
   add_foreign_key "solid_queue_batch_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
   add_foreign_key "solid_queue_blocked_executions", "solid_queue_jobs", column: "job_id", on_delete: :cascade
