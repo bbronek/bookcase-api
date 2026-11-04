@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  # One-shot: creates the database, loads the schema and seeds on first run, migrates afterwards.
+  # web and worker wait for it, so neither boots against a half-migrated database.
+  migrate:
+    build: .
+    command: bin/rails db:prepare
+    environment: &rails_env
+      DB_HOST: db
+      RAILS_LOG_TO_STDOUT: "1"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: .
+    command: bin/rails server -b 0.0.0.0
+    ports:
+      - "${PORT:-3000}:3000"
+    environment: *rails_env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build: .
+    command: bin/jobs
+    environment: *rails_env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
