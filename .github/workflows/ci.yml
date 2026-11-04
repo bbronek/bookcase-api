@@ -79,4 +79,4 @@ jobs:
       - name: Run specs
         env:
           RAILS_ENV: test
-        run: bin/rails db:prepare && bundle exec rspec
+        run: bin/rails db:test:prepare && bundle exec rspec
