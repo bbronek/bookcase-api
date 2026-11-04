@@ -16,7 +16,7 @@ That builds the image, starts PostgreSQL, creates and seeds the database, then s
 
 | Service   | What it does                                                                                   |
 |-----------|------------------------------------------------------------------------------------------------|
-| `db`      | PostgreSQL 17 (also published on `127.0.0.1:5433` for `psql`)                                  |
+| `db`      | PostgreSQL 17 (also published on `127.0.0.1:5433` for `psql`; override with `DB_PUBLISHED_PORT`) |
 | `migrate` | One-shot `rails db:prepare`: schema, migrations and seeds. The other two services wait for it. |
 | `web`     | Puma on port 3000 (override with `PORT=3001 docker compose up`)                                |
 | `worker`  | Solid Queue: runs the daily reminder job                                                       |
