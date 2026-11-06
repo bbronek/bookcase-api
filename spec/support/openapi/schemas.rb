@@ -22,7 +22,7 @@ module OpenAPISchemas
   }.freeze
   BOOK_BORROWING = {
     id: UUID,
-    reader: ref(:ReaderSummary),
+    reader: ref(:Reader),
     borrowed_at: TIMESTAMP,
     due_on: { type: :string, format: :date, description: "Calendar date in Europe/Warsaw, 30 days after the borrow." },
     returned_at: NULLABLE_TIMESTAMP.merge(description: "Null until the book is returned.")
@@ -43,7 +43,6 @@ module OpenAPISchemas
       email: { type: :string, format: :email, maxLength: 254, example: "ada@example.com", description: "Stored trimmed and lower-cased; unique." }
     }),
     BookSummary: object(BOOK.slice(:serial_number, :title)),
-    ReaderSummary: object({ card_number: CARD_NUMBER, full_name: FULL_NAME }),
     Problem: object({
       type: { type: :string, format: :"uri-reference", example: "/problems#book-already-borrowed",
               description: "`about:blank` for plain HTTP errors, otherwise a stable reference documented at `/problems`." },

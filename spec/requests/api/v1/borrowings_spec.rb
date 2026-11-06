@@ -4,11 +4,11 @@ RSpec.describe "API v1 borrowings" do
   let!(:book) { create(:book, serial_number: "000001", title: "Dune", author: "Frank Herbert") }
 
   def dune = { serial_number: "000001", title: "Dune" }
-  def ada = { card_number: "100001", full_name: "Ada Lovelace" }
+  def ada = { card_number: "100001", full_name: "Ada Lovelace", email: "ada@example.com" }
 
   before do
     travel_to Time.zone.parse("2026-11-04 10:00")
-    create(:reader, **ada, email: "ada@example.com")
+    create(:reader, **ada)
   end
 
   def borrow_dune(card_number: "100001", borrowed_at: nil)

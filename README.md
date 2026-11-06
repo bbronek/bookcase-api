@@ -30,7 +30,7 @@ Book and reader numbers are six-digit strings. Text is trimmed without changing 
 
 Commands in `app/domains` own writes and transactions; controllers translate HTTP; Alba serializers define response shapes. Queries preload related records. PostgreSQL constraints and row locks protect competing writes.
 
-Availability is derived from the active borrowing. Returns target a borrowing id, so a repeated old return cannot close a newer borrowing. Withdrawals keep history and reserve the serial number. UUIDv7 identifies internal records; staff use serial and card numbers.
+Availability is derived from the active borrowing. Returns target a borrowing id, so a repeated old return cannot close a newer borrowing. Withdrawals keep history and reserve the serial number. History includes the reader's card number, full name and email. UUIDv7 identifies internal records; staff use serial and card numbers.
 
 Borrowings last 30 calendar days in Europe/Warsaw. An hourly daytime scheduler queues reminder deliveries separately, three days before the due date and on the due date. Due-soon reminders can catch up before the due date. Transient failures retry; rejected recipient addresses are recorded as failed. Sending and recording delivery are not atomic, so a crash between them can duplicate an email. Authentication is omitted for this task.
 

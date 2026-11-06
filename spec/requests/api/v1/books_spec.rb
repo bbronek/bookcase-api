@@ -2,8 +2,8 @@ require "swagger_helper"
 
 RSpec.describe "API v1 books" do
   def dune = { serial_number: "000001", title: "Dune", author: "Frank Herbert" }
-  def ada = { card_number: "100001", full_name: "Ada Lovelace" }
-  def alan = { card_number: "100002", full_name: "Alan Turing" }
+  def ada = { card_number: "100001", full_name: "Ada Lovelace", email: "ada@example.com" }
+  def alan = { card_number: "100002", full_name: "Alan Turing", email: "alan@example.com" }
 
   before { travel_to Time.zone.parse("2026-11-04 10:00") }
 
