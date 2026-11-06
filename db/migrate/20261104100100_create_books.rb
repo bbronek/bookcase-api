@@ -11,6 +11,8 @@ class CreateBooks < ActiveRecord::Migration[8.1]
       t.check_constraint "serial_number ~ '^[0-9]{6}$'", name: "books_serial_number_six_digits"
       t.check_constraint "title ~ '[^[:space:]]' AND title !~ '[[:cntrl:]]'", name: "books_title_plain_text"
       t.check_constraint "author ~ '[^[:space:]]' AND author !~ '[[:cntrl:]]'", name: "books_author_plain_text"
+      t.check_constraint "title = btrim(title)", name: "books_title_trimmed"
+      t.check_constraint "author = btrim(author)", name: "books_author_trimmed"
     end
   end
 end

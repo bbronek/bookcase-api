@@ -11,7 +11,10 @@ class CreateReaders < ActiveRecord::Migration[8.1]
       t.check_constraint "card_number ~ '^[0-9]{6}$'", name: "readers_card_number_six_digits"
       t.check_constraint "full_name ~ '[^[:space:]]' AND full_name !~ '[[:cntrl:]]'",
         name: "readers_full_name_plain_text"
+      t.check_constraint "full_name = btrim(full_name)", name: "readers_full_name_trimmed"
       t.check_constraint "email = lower(btrim(email))", name: "readers_email_normalized"
+      t.check_constraint "email ~ '^[^@[:space:]]+@[^@[:space:]]+$' AND email !~ '[[:cntrl:]]'",
+        name: "readers_email_shape"
     end
   end
 end
