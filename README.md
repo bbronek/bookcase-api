@@ -95,6 +95,29 @@ Start with [BorrowBook](app/domains/circulation/borrow_book.rb), the [race tests
 - **Keep HTTP out of workflows.** Commands return records or raise specific errors; one concern maps errors to HTTP responses. Queries preload associations; Panko defines response shapes and encodes them directly to JSON using Oj.
 - **Record delivery, not enqueueing.** An hourly 09:00–21:00 Warsaw scheduler queues pending reminders. A unique borrowing/kind pair and queue concurrency control prevent ordinary duplicate deliveries. `sent_at` is written only after delivery succeeds; transient failures retry. Missed three-day reminders can catch up before the due date.
 
+<details>
+<summary>Why these gems</summary>
+
+Each gem does a job that Ruby or Rails would otherwise need custom code for.
+
+| Gem | Why |
+|---|---|
+| `rails`, `pg`, `puma`, `bootsnap` | Rails in API mode on PostgreSQL, served by Puma and booted faster by bootsnap |
+| `panko_serializer` | Explicit response shapes written straight to JSON through Oj, without building intermediate hashes |
+| `solid_queue` | Jobs, the hourly schedule and per-reminder concurrency control on the existing PostgreSQL, so no Redis |
+| `rspec-rails`, `factory_bot_rails`, `shoulda-matchers` | The test stack, with one-line validation and association checks |
+| `rswag-specs`, `json_schemer` | OpenAPI generated from request specs, and the document and its examples validated against OpenAPI 3.1 |
+| `simplecov` | The 100% line and branch coverage gate |
+| `rubocop-rails-omakase` and the RuboCop plugins | Rails style plus the Performance, RSpec and FactoryBot cops |
+| `brakeman`, `bundler-audit` | Static security analysis and known gem vulnerabilities |
+| `database_consistency` | Checks that validations, unique indexes and constraints agree |
+| `lefthook` | Git hooks for lint, commit messages and the pre-push suite |
+| `annotaterb` | Generated schema summaries at the top of each model |
+
+Left out on purpose: Redis-backed queues, pagination and soft-delete gems, result-object libraries and parallel test runners. The app needs none of them at this size, and the suite runs in seconds.
+
+</details>
+
 ## Checks and local development
 
 With Compose running, execute the suite without installing Ruby locally:
