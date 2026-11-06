@@ -7,33 +7,36 @@ Instructions for AI coding agents working in this repository. Update this file i
 Bookcase API: a small library API built with Ruby 4.0.9, Rails 8.1 API mode, PostgreSQL 18, Solid Queue, RSpec, rswag and Panko. Its Rails namespace is `Bookcase`, and its repository folder is `bookcase-api`. Authentication, overdue reminders, extensions, borrowing limits and a frontend are out of scope unless requested.
 
 - `app/controllers/api/v1`: HTTP adapters. Read input through `path_parameter`, `query_parameter` and `body_attributes`; call commands or queries; render serializers.
-- `app/domains`: Catalog, Circulation, Membership and Notifications. Plain command/query classes with keyword arguments and `.call`. Commands return records or raise typed domain errors.
+- `app/domains`: Catalog, Circulation, Membership and Notifications. Plain command/query classes with keyword arguments and `.call`. Commands return records or raise typed domain errors. An error raised by one command is nested in it (`Catalog::AddBook::SerialNumberTaken`); an error raised by several has its own file (`Catalog::BookWithdrawn`, `Circulation::BookBorrowed`).
 - `app/models`: associations, validations, normalization, scopes and small rules. Workflows belong in commands.
 - `app/serializers/api/v1`: Panko response shapes. Reuse `ReaderSerializer` for borrowing readers and `BookSummarySerializer` for a borrowing's book. Timestamps use UTC ISO 8601 with three fractional digits. Render records with `serialize_to_json` and collections with `Panko::ArraySerializer`; create serializers per call, not shared instances.
 - `app/jobs`: thin wrappers for scheduling and delivery. Mailer templates are in `app/views`; dates and subjects use `config/locales/en.yml`.
 - `ProblemDetails` maps application errors to problem JSON. `ErrorsController` answers unmatched routes with 404. `lib/problem.rb` also supports framework exceptions and host authorization.
 - `spec/support/openapi`: schemas, a request-spec DSL and recorded examples. Use public rswag configuration, not formatter patches.
 - `db/migrate`: forward schema changes. `db/schema.rb` and model schema annotations are generated.
+- `spec`: `models` for validations and database guards, `domains` for commands and queries, `requests/api/v1` for endpoints and the OpenAPI document, `integration` for races and the reminder lifecycle, `jobs`, `mailers` and `docs`.
+
+`README.md` explains the design decisions and `docs/diagrams.md` the flows; read them before changing behaviour.
 
 ## Commands and completion
 
 ```sh
-docker compose up -d db
-bin/setup --skip-server
-bundle exec rspec
-COVERAGE=1 bundle exec rspec
-bin/rubocop
-script/docs
-bin/ci
-script/smoke
-bundle exec annotaterb models
+docker compose up -d db        # PostgreSQL for development and tests
+bin/setup --skip-server        # gems, git hooks, database
+bundle exec rspec              # the suite
+COVERAGE=1 bundle exec rspec   # the suite with the 100% coverage gate
+bin/rubocop                    # lint
+script/docs                    # regenerate public/openapi/v1.yaml from the request specs
+bin/ci                         # every CI check; run before pushing
+script/smoke                   # Docker end to end, takes minutes; run after Docker or deployment changes
+bundle exec annotaterb models  # refresh model schema annotations after a migration
 ```
 
 Local PostgreSQL defaults to port 5433. Tests always use the test environment; race specs delete test rows.
 
 The Compose project remains explicitly named `library-api`, and local databases remain `library_api_development` and `library_api_test`, to preserve existing volumes and data across the folder rename. New image tags and disposable smoke-test resources use `bookcase-api`.
 
-A change is complete when lint and the full coverage-gated suite pass, affected documentation matches, and generated OpenAPI is current. Run `script/docs` after changing routes, serializers or request specs. Run `bin/ci` before pushing and never skip git hooks. Preserve existing data; do not reset development databases to apply migrations.
+A change is complete when lint and the full coverage-gated suite pass, affected documentation matches, and generated OpenAPI is current. Run `script/docs` after changing routes, serializers or request specs. Run `bin/ci` before pushing and never skip git hooks. Preserve existing data; do not reset development databases to apply migrations. Push only when asked, and never force-push or rewrite commits that are already pushed.
 
 ## Business and API rules
 
@@ -66,6 +69,6 @@ Use Omakase layout, double quotes, two-space indentation and `%i[ a b ]`. Endles
 
 No code/configuration comments except generated annotations, shebangs and Docker directives; explain decisions in documentation. Autocorrect only with `bin/rubocop -a --except Layout/LineLength`; wrap long application lines manually. Specs may use longer lines for complete expected bodies, and generated annotation lines may exceed the limit.
 
-Keep changes scoped. Add request specs and regenerate docs for endpoints or response fields. Add database and model specs for stored-data rules. Document required production settings using `ENV.fetch`. Breaking changes after this recruitment submission require a new API version.
+Keep changes scoped. Add request specs and regenerate docs for endpoints or response fields. Add database and model specs for stored-data rules. Read a required production setting with `ENV.fetch`, so boot fails without it, and list it in the README's production section. Breaking API changes after the first release need a new version under `/api/v2`.
 
 Use title-only Conventional Commits: `type(scope): describe the intent`, with an optional scope. Use `feat` for features, `fix` for bug fixes and `!` for breaking changes; a breaking title must describe the contract that changed. Keep implementation, tests and relevant documentation together in one independently testable commit. Separate unrelated behavior, tooling and documentation changes. Do not add AI co-author or generated-by trailers.
