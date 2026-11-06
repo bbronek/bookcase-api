@@ -52,7 +52,7 @@ RSpec.describe "API v1 borrowings" do
       end
 
       problem_response "409", "The book is already borrowed or withdrawn",
-                       type: "book-already-borrowed", detail: "Book 000001 is already borrowed" do
+                       type: "book-borrowed", detail: "Book 000001 is currently borrowed" do
         before { borrow_dune(card_number: create(:reader).card_number) }
       end
 
@@ -124,7 +124,7 @@ RSpec.describe "API v1 borrowings" do
 
       post "/api/v1/books/000001/borrowings", params: { card_number: "100001" }, as: :json
 
-      expect(response).to be_problem(:conflict, type: "book-already-borrowed")
+      expect(response).to be_problem(:conflict, type: "book-borrowed")
       expect(Borrowing.count).to eq(1)
     end
 

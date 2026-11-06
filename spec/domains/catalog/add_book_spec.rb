@@ -37,7 +37,7 @@ RSpec.describe Catalog::AddBook do
   it "refuses a serial number that belongs to a different book" do
     add
 
-    expect { add(title: "Dune Messiah") }.to raise_error(Catalog::AddBook::SerialNumberTaken, "Serial number 000001 is already registered")
+    expect { add(title: "Dune Messiah") }.to raise_error(Catalog::AddBook::SerialNumberTaken, "Serial number 000001 is already taken")
   end
 
   it "never reuses the serial number of a withdrawn book" do

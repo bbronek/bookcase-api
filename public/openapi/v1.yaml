@@ -145,14 +145,14 @@ paths:
               schema:
                 "$ref": "#/components/schemas/Book"
         '409':
-          description: The serial number is already registered
+          description: The serial number is already taken
           content:
             application/problem+json:
               example:
                 type: "/problems#serial-number-taken"
                 title: Serial number taken
                 status: 409
-                detail: Serial number 000001 is already registered
+                detail: Serial number 000001 is already taken
                 instance: "/api/v1/books"
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
@@ -278,8 +278,7 @@ paths:
                 type: "/problems#book-borrowed"
                 title: Book borrowed
                 status: 409
-                detail: Book 000001 is borrowed and cannot be withdrawn until it is
-                  returned
+                detail: Book 000001 is currently borrowed
                 instance: "/api/v1/books/000001"
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
@@ -346,10 +345,10 @@ paths:
           content:
             application/problem+json:
               example:
-                type: "/problems#book-already-borrowed"
-                title: Book already borrowed
+                type: "/problems#book-borrowed"
+                title: Book borrowed
                 status: 409
-                detail: Book 000001 is already borrowed
+                detail: Book 000001 is currently borrowed
                 instance: "/api/v1/books/000001/borrowings"
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
@@ -920,7 +919,7 @@ components:
         type:
           type: string
           format: uri-reference
-          example: "/problems#book-already-borrowed"
+          example: "/problems#book-borrowed"
           description: "`about:blank` for plain HTTP errors, otherwise a stable reference
             documented at `/problems`."
         title:

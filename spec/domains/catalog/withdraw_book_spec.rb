@@ -15,7 +15,7 @@ RSpec.describe Catalog::WithdrawBook do
     book = create(:borrowing).book
 
     expect { described_class.call(serial_number: book.serial_number) }
-      .to raise_error(Catalog::WithdrawBook::BookBorrowed, "Book #{book.serial_number} is borrowed and cannot be withdrawn until it is returned")
+      .to raise_error(Circulation::BookBorrowed, "Book #{book.serial_number} is currently borrowed")
     expect(book.reload.withdrawn_at).to be_nil
   end
 

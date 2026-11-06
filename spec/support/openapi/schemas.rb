@@ -44,7 +44,7 @@ module OpenAPISchemas
     }),
     BookSummary: object(BOOK.slice(:serial_number, :title)),
     Problem: object({
-      type: { type: :string, format: :"uri-reference", example: "/problems#book-already-borrowed",
+      type: { type: :string, format: :"uri-reference", example: "/problems#book-borrowed",
               description: "`about:blank` for plain HTTP errors, otherwise a stable reference documented at `/problems`." },
       title: { type: :string },
       status: { type: :integer },

@@ -27,7 +27,7 @@ RSpec.describe Circulation::BorrowBook do
   it "refuses a repeated request by the same reader" do
     borrow
 
-    expect { borrow }.to raise_error(described_class::BookAlreadyBorrowed)
+    expect { borrow }.to raise_error(Circulation::BookBorrowed)
     expect(book.borrowings.count).to eq(1)
   end
 
@@ -35,7 +35,7 @@ RSpec.describe Circulation::BorrowBook do
     borrow
 
     expect { borrow(card_number: create(:reader).card_number) }
-      .to raise_error(described_class::BookAlreadyBorrowed, "Book 000001 is already borrowed")
+      .to raise_error(Circulation::BookBorrowed, "Book 000001 is currently borrowed")
   end
 
   it "lends the book again once it has been returned" do

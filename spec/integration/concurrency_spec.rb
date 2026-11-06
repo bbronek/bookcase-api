@@ -43,7 +43,7 @@ RSpec.describe "Concurrent requests" do
       second = start_waiting_for_lock { Circulation::BorrowBook.call(serial_number: "000001", card_number: "100002") }
     end
 
-    expect { second.value }.to raise_error(Circulation::BorrowBook::BookAlreadyBorrowed)
+    expect { second.value }.to raise_error(Circulation::BookBorrowed)
     expect(Borrowing.active.sole.reader).to eq(ada)
   end
 
@@ -55,7 +55,7 @@ RSpec.describe "Concurrent requests" do
       withdrawal = start_waiting_for_lock { Catalog::WithdrawBook.call(serial_number: "000001") }
     end
 
-    expect { withdrawal.value }.to raise_error(Catalog::WithdrawBook::BookBorrowed)
+    expect { withdrawal.value }.to raise_error(Circulation::BookBorrowed)
     expect(book.reload.withdrawn_at).to be_nil
   end
 

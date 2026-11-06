@@ -17,13 +17,11 @@
     <dt id="validation-failed">validation-failed <code>422</code></dt>
     <dd>One or more attributes are invalid. <code>errors</code> lists each one with a JSON pointer, for example <code>#/title</code>.</dd>
     <dt id="serial-number-taken">serial-number-taken <code>409</code></dt>
-    <dd>The serial number is already registered, even if the attributes match or the book is withdrawn.</dd>
+    <dd>The serial number is already taken, even if the attributes match or the book is withdrawn.</dd>
     <dt id="book-withdrawn">book-withdrawn <code>409</code></dt>
     <dd>The book was withdrawn from the catalog and cannot be lent. Its history remains readable.</dd>
     <dt id="book-borrowed">book-borrowed <code>409</code></dt>
-    <dd>The book is borrowed, so it cannot be withdrawn until it is returned.</dd>
-    <dt id="book-already-borrowed">book-already-borrowed <code>409</code></dt>
-    <dd>The book is already borrowed. Repeating the request for the same reader also answers 409.</dd>
+    <dd>The book is currently borrowed. Until it is returned it cannot be lent again, not even to the same reader, or withdrawn.</dd>
     <dt id="card-number-taken">card-number-taken <code>409</code></dt>
     <dd>The card number is already registered, even if the reader's details match.</dd>
     <dt id="email-taken">email-taken <code>409</code></dt>

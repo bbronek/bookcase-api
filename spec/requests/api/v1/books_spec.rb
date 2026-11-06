@@ -66,8 +66,8 @@ RSpec.describe "API v1 books" do
         end
       end
 
-      problem_response "409", "The serial number is already registered",
-                       type: "serial-number-taken", detail: "Serial number 000001 is already registered" do
+      problem_response "409", "The serial number is already taken",
+                       type: "serial-number-taken", detail: "Serial number 000001 is already taken" do
         before { create(:book, **dune) }
       end
 
@@ -136,7 +136,7 @@ RSpec.describe "API v1 books" do
       problem_response "404", "No book with this serial number", detail: "Book not found"
 
       problem_response "409", "The book is borrowed",
-                       type: "book-borrowed", detail: "Book 000001 is borrowed and cannot be withdrawn until it is returned" do
+                       type: "book-borrowed", detail: "Book 000001 is currently borrowed" do
         before { create(:borrowing, book: create(:book, **dune)) }
       end
     end

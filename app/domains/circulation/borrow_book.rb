@@ -1,13 +1,5 @@
 module Circulation
   class BorrowBook
-    class BookAlreadyBorrowed < DomainError::Conflict
-      self.problem_type = "book-already-borrowed"
-
-      def initialize(serial_number)
-        super("Book #{serial_number} is already borrowed")
-      end
-    end
-
     class CardNumberMissing < DomainError::Invalid
       def initialize
         super("can't be blank", attribute: :card_number)
@@ -36,7 +28,7 @@ module Circulation
         raise Catalog::BookWithdrawn, book.serial_number if book.withdrawn?
 
         reader = Reader.find_by(card_number: @card_number) || raise(UnknownReader)
-        raise BookAlreadyBorrowed, book.serial_number if book.current_borrowing
+        raise BookBorrowed, book.serial_number if book.borrowed?
 
         lend(book, reader)
       end

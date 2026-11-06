@@ -64,7 +64,7 @@ sequenceDiagram
         S-->>Ctl: JSON
         Ctl-->>C: 201 Created, Location /api/v1/borrowings/id
     else book already borrowed, by any reader
-        Cmd-->>P: raise BookAlreadyBorrowed
+        Cmd-->>P: raise BookBorrowed
         P-->>C: 409 application/problem+json
     end
 ```
@@ -143,7 +143,7 @@ sequenceDiagram
     A->>DB: no active borrowing, INSERT, COMMIT
     DB-->>B: lock granted
     B->>DB: active borrowing by another reader
-    B-->>B: ROLLBACK, 409 book already borrowed
+    B-->>B: ROLLBACK, 409 book borrowed
 ```
 
 ## Reminder emails

@@ -4,7 +4,7 @@ module Catalog
       self.problem_type = "serial-number-taken"
 
       def initialize(serial_number)
-        super("Serial number #{serial_number} is already registered")
+        super("Serial number #{serial_number} is already taken")
       end
     end
 
