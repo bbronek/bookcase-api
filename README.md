@@ -2,9 +2,7 @@
 
 A JSON API for library staff: keep a catalog of physical books, register readers, lend and take back books with each book's full borrowing history, and email readers three days before a book is due and on the due date.
 
-Built as a take-home assignment for a Ruby on Rails Developer role.
-
-**Status:** all required features done · 210 specs passing · 100% line and branch coverage · 0 RuboCop offenses
+**Status:** feature-complete · 210 specs · `bin/ci` runs lint, security scans, database checks and the specs · `script/smoke` runs everything in Docker
 
 ![Ruby 4.0.9](https://img.shields.io/badge/Ruby-4.0.9-CC342D?logo=ruby&logoColor=white)
 ![Rails 8.1](https://img.shields.io/badge/Rails-8.1_API-D30001?logo=rubyonrails&logoColor=white)
@@ -175,7 +173,7 @@ spec/requests/api/v1/                    request specs that also generate the AP
 | `solid_queue` | Jobs, the hourly schedule and per-reminder concurrency control without Redis |
 | `rspec-rails`, `factory_bot_rails`, `shoulda-matchers` | The test stack, with one-line validation and association checks |
 | `rswag-specs`, `json_schemer` | OpenAPI generated from request specs, and validated against OpenAPI 3.1 |
-| `simplecov` | The 100% line and branch coverage gate |
+| `simplecov` | Line and branch coverage reports, so code no spec exercises shows up in CI |
 | `rubocop-rails-omakase` and its plugins | Rails style plus the Performance, RSpec and FactoryBot cops |
 | `brakeman`, `bundler-audit` | Static security analysis and known gem vulnerabilities |
 | `database_consistency` | Checks that validations, unique indexes and constraints agree |
