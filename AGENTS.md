@@ -34,8 +34,6 @@ bundle exec annotaterb models  # refresh model schema annotations after a migrat
 
 Local PostgreSQL defaults to port 5433. Tests always use the test environment; race specs delete test rows.
 
-The Compose project remains explicitly named `library-api`, and local databases remain `library_api_development` and `library_api_test`, to preserve existing volumes and data across the folder rename. New image tags and disposable smoke-test resources use `bookcase-api`.
-
 A change is complete when lint and the full coverage-gated suite pass, affected documentation matches, and generated OpenAPI is current. Run `script/docs` after changing routes, serializers or request specs. Run `bin/ci` before pushing and never skip git hooks. Preserve existing data; do not reset development databases to apply migrations. Push only when asked, and never force-push or rewrite commits that are already pushed.
 
 ## Business and API rules

@@ -16,11 +16,11 @@ local: &local
 
 development:
   <<: *local
-  database: library_api_development
+  database: bookcase_api_development
 
 test:
   <<: *local
-  database: library_api_test
+  database: bookcase_api_test
 
 production:
   <<: *default

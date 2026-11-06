@@ -204,10 +204,10 @@ spec/requests/api/v1/                    ← request specs that also generate th
 - **AI coding agents** follow the instructions in [AGENTS.md](AGENTS.md); [CLAUDE.md](CLAUDE.md) loads them for Claude Code.
 
 <details>
-<summary>Production configuration and existing installations</summary>
+<summary>Production configuration and upgrades</summary>
 
 The Dockerfile has a `production` target. It requires `SECRET_KEY_BASE`, `DATABASE_URL`, `APP_HOSTS`, `SMTP_ADDRESS` and `MAILER_FROM`; SMTP credentials and port are optional. Run `bin/rails db:prepare`, the web process and `bin/jobs`. TLS must end at a trusted proxy. The target is smoke-tested, not a complete deployment setup.
 
-The Compose project and local database names keep `library-api` and `library_api_*` so existing volumes survive the rename to Bookcase. The email-shape and trimmed-text migrations reject existing malformed addresses and untrimmed text rather than rewriting them; correct those records before retrying.
+When upgrading an existing database, the email-shape and trimmed-text migrations reject malformed addresses and untrimmed text rather than rewriting them; correct those records before retrying.
 
 </details>
