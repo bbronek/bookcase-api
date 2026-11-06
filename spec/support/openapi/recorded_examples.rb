@@ -14,6 +14,6 @@ RSpec.configure do |config|
   config.after(:each, type: :request) do |example|
     next unless example.metadata[:response] && response&.body.present?
 
-    example.metadata[:response][:content] = { "application/json" => { example: RecordedExamples.stable(response.body) } }
+    example.metadata[:response][:content] = { response.media_type => { example: RecordedExamples.stable(response.body) } }
   end
 end

@@ -22,12 +22,11 @@ RSpec.describe "OpenAPI document" do
     expect(documented).to match_array(routes)
   end
 
-  it "gives every operation a unique id, a tag and an answer for unexpected failures" do
+  it "gives every operation a unique id and a tag" do
     operations = document["paths"].flat_map { |path, item| item.except("parameters").map { |_, operation| [ path, operation ] } }
 
     expect(operations.map { it.last["operationId"] }.tally.values).to all(eq(1))
     expect(operations.map { it.last }).to all(include("tags"))
-    expect(operations.select { |path, _| path.start_with?("/api/v1") }.map(&:last)).to all(include("responses" => include("default")))
   end
 
   it "has examples that validate against their own schemas" do

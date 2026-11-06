@@ -17,7 +17,7 @@ module OpenAPIDSL
   end
 
   def problem_response(status, description, detail:, type: nil, errors: nil, &setup)
-    response(status, description) do
+    response(status, description, operation: metadata[:operation].merge(produces: [ Problem::MEDIA_TYPE ])) do
       schema OpenAPISchemas.ref(:Problem)
       instance_exec(&setup) if setup
 

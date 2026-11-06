@@ -79,8 +79,6 @@ paths:
         '200':
           description: A page of books
           headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
             Link:
               schema:
                 type: string
@@ -119,11 +117,6 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        default:
-          "$ref": "#/components/responses/Unexpected"
     post:
       summary: Add a book
       tags:
@@ -131,33 +124,11 @@ paths:
       operationId: addBook
       description: Adds a book to the catalog. Repeating the request with the same
         attributes answers 200 with the existing book.
+      parameters: []
       responses:
-        '200':
-          description: Already in the catalog with the same attributes
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-            Content-Location:
-              schema:
-                type: string
-                format: uri-reference
-              description: Path of the existing book.
-          content:
-            application/json:
-              example:
-                serial_number: '000001'
-                title: Dune
-                author: Frank Herbert
-                status: available
-                withdrawn_at:
-                current_borrowing:
-              schema:
-                "$ref": "#/components/schemas/Book"
         '201':
           description: Added
           headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
             Location:
               schema:
                 type: string
@@ -174,8 +145,25 @@ paths:
                 current_borrowing:
               schema:
                 "$ref": "#/components/schemas/Book"
-        '400':
-          "$ref": "#/components/responses/BadRequest"
+        '200':
+          description: Already in the catalog with the same attributes
+          headers:
+            Content-Location:
+              schema:
+                type: string
+                format: uri-reference
+              description: Path of the existing book.
+          content:
+            application/json:
+              example:
+                serial_number: '000001'
+                title: Dune
+                author: Frank Herbert
+                status: available
+                withdrawn_at:
+                current_borrowing:
+              schema:
+                "$ref": "#/components/schemas/Book"
         '409':
           description: The serial number belongs to a different book, or to a withdrawn
             one
@@ -190,13 +178,6 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        '413':
-          "$ref": "#/components/responses/ContentTooLarge"
-        '415':
-          "$ref": "#/components/responses/UnsupportedMediaType"
         '422':
           description: Invalid attributes
           content:
@@ -213,11 +194,6 @@ paths:
                   detail: must be a string
               schema:
                 "$ref": "#/components/schemas/Problem"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        default:
-          "$ref": "#/components/responses/Unexpected"
       requestBody:
         content:
           application/json:
@@ -276,11 +252,6 @@ paths:
                   returned_at: '2026-09-20T14:00:00.000Z'
               schema:
                 "$ref": "#/components/schemas/BookDetail"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        '400':
-          "$ref": "#/components/responses/BadRequest"
         '404':
           description: No book with this serial number
           content:
@@ -294,11 +265,6 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        default:
-          "$ref": "#/components/responses/Unexpected"
     delete:
       summary: Withdraw a book
       tags:
@@ -309,11 +275,6 @@ paths:
       responses:
         '204':
           description: Withdrawn
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        '400':
-          "$ref": "#/components/responses/BadRequest"
         '404':
           description: No book with this serial number
           content:
@@ -327,9 +288,6 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
         '409':
           description: The book is borrowed
           content:
@@ -344,11 +302,6 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        default:
-          "$ref": "#/components/responses/Unexpected"
   "/api/v1/books/{serial_number}/borrowings":
     parameters:
     - name: serial_number
@@ -368,37 +321,11 @@ paths:
         Lends the book to the reader with this card number for 30 days. Repeating the request for the same reader while
         the book is still out answers 200 with the existing borrowing; another reader gets 409 until the book is returned,
         and a withdrawn book gets 409 for good.
+      parameters: []
       responses:
-        '200':
-          description: The same reader already has the book
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-            Content-Location:
-              schema:
-                type: string
-                format: uri-reference
-              description: Path of the existing borrowing.
-          content:
-            application/json:
-              example:
-                id: '019a0000-0000-7000-8000-000000000001'
-                reader:
-                  card_number: '100001'
-                  full_name: Ada Lovelace
-                borrowed_at: '2026-11-03T09:00:00.000Z'
-                due_on: '2026-12-03'
-                returned_at:
-                book:
-                  serial_number: '000001'
-                  title: Dune
-              schema:
-                "$ref": "#/components/schemas/Borrowing"
         '201':
           description: Borrowed
           headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
             Location:
               schema:
                 type: string
@@ -419,8 +346,29 @@ paths:
                   title: Dune
               schema:
                 "$ref": "#/components/schemas/Borrowing"
-        '400':
-          "$ref": "#/components/responses/BadRequest"
+        '200':
+          description: The same reader already has the book
+          headers:
+            Content-Location:
+              schema:
+                type: string
+                format: uri-reference
+              description: Path of the existing borrowing.
+          content:
+            application/json:
+              example:
+                id: '019a0000-0000-7000-8000-000000000001'
+                reader:
+                  card_number: '100001'
+                  full_name: Ada Lovelace
+                borrowed_at: '2026-11-03T09:00:00.000Z'
+                due_on: '2026-12-03'
+                returned_at:
+                book:
+                  serial_number: '000001'
+                  title: Dune
+              schema:
+                "$ref": "#/components/schemas/Borrowing"
         '404':
           description: No book with this serial number
           content:
@@ -434,9 +382,6 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
         '409':
           description: Another reader has the book, or the book was withdrawn
           content:
@@ -450,13 +395,6 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        '413':
-          "$ref": "#/components/responses/ContentTooLarge"
-        '415':
-          "$ref": "#/components/responses/UnsupportedMediaType"
         '422':
           description: The card number is missing or matches no reader
           content:
@@ -473,11 +411,6 @@ paths:
                   detail: does not match any reader
               schema:
                 "$ref": "#/components/schemas/Problem"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        default:
-          "$ref": "#/components/responses/Unexpected"
       requestBody:
         content:
           application/json:
@@ -516,11 +449,6 @@ paths:
                   title: Dune
               schema:
                 "$ref": "#/components/schemas/Borrowing"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        '400':
-          "$ref": "#/components/responses/BadRequest"
         '404':
           description: No borrowing with this id
           content:
@@ -534,11 +462,6 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        default:
-          "$ref": "#/components/responses/Unexpected"
   "/api/v1/borrowings/{id}/return":
     parameters:
     - name: id
@@ -559,8 +482,6 @@ paths:
         '200':
           description: Returned
           headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
             Content-Location:
               schema:
                 type: string
@@ -581,8 +502,6 @@ paths:
                   title: Dune
               schema:
                 "$ref": "#/components/schemas/Borrowing"
-        '400':
-          "$ref": "#/components/responses/BadRequest"
         '404':
           description: No borrowing with this id
           content:
@@ -596,11 +515,6 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        default:
-          "$ref": "#/components/responses/Unexpected"
   "/api/v1/readers":
     get:
       summary: List readers
@@ -628,8 +542,6 @@ paths:
         '200':
           description: A page of readers
           headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
             Link:
               schema:
                 type: string
@@ -648,10 +560,6 @@ paths:
                 type: array
                 items:
                   "$ref": "#/components/schemas/Reader"
-        '400':
-          "$ref": "#/components/responses/BadRequest"
-        default:
-          "$ref": "#/components/responses/Unexpected"
     post:
       summary: Register a reader
       tags:
@@ -659,30 +567,11 @@ paths:
       operationId: registerReader
       description: Registers a reader. Repeating the request with the same attributes
         answers 200 with the existing reader.
+      parameters: []
       responses:
-        '200':
-          description: Already registered with the same attributes
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-            Content-Location:
-              schema:
-                type: string
-                format: uri-reference
-              description: Path of the existing reader.
-          content:
-            application/json:
-              example:
-                card_number: '100001'
-                full_name: Ada Lovelace
-                email: ada@example.com
-              schema:
-                "$ref": "#/components/schemas/Reader"
         '201':
           description: Registered
           headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
             Location:
               schema:
                 type: string
@@ -696,8 +585,22 @@ paths:
                 email: ada@example.com
               schema:
                 "$ref": "#/components/schemas/Reader"
-        '400':
-          "$ref": "#/components/responses/BadRequest"
+        '200':
+          description: Already registered with the same attributes
+          headers:
+            Content-Location:
+              schema:
+                type: string
+                format: uri-reference
+              description: Path of the existing reader.
+          content:
+            application/json:
+              example:
+                card_number: '100001'
+                full_name: Ada Lovelace
+                email: ada@example.com
+              schema:
+                "$ref": "#/components/schemas/Reader"
         '409':
           description: The card number or email belongs to a different reader
           content:
@@ -711,13 +614,6 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        '413':
-          "$ref": "#/components/responses/ContentTooLarge"
-        '415':
-          "$ref": "#/components/responses/UnsupportedMediaType"
         '422':
           description: Invalid attributes
           content:
@@ -738,11 +634,6 @@ paths:
                   detail: is invalid
               schema:
                 "$ref": "#/components/schemas/Problem"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        default:
-          "$ref": "#/components/responses/Unexpected"
       requestBody:
         content:
           application/json:
@@ -775,11 +666,6 @@ paths:
                 email: ada@example.com
               schema:
                 "$ref": "#/components/schemas/Reader"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        '400':
-          "$ref": "#/components/responses/BadRequest"
         '404':
           description: No reader with this card number
           content:
@@ -793,11 +679,6 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
-        default:
-          "$ref": "#/components/responses/Unexpected"
   "/health/live":
     get:
       summary: Liveness
@@ -814,9 +695,6 @@ paths:
                 status: ok
               schema:
                 "$ref": "#/components/schemas/Liveness"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
   "/health/ready":
     get:
       summary: Readiness
@@ -836,14 +714,9 @@ paths:
                   database: ok
               schema:
                 "$ref": "#/components/schemas/Readiness"
-          headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
         '503':
           description: A dependency is down
           headers:
-            X-Request-Id:
-              "$ref": "#/components/headers/X-Request-Id"
             Retry-After:
               schema:
                 type: string
@@ -1193,46 +1066,3 @@ components:
               enum:
               - ok
               - error
-  responses:
-    BadRequest:
-      headers:
-        X-Request-Id:
-          "$ref": "#/components/headers/X-Request-Id"
-      content:
-        application/problem+json:
-          schema:
-            "$ref": "#/components/schemas/Problem"
-      description: 'Malformed request: invalid JSON, parameters or encoding'
-    ContentTooLarge:
-      headers:
-        X-Request-Id:
-          "$ref": "#/components/headers/X-Request-Id"
-      content:
-        application/problem+json:
-          schema:
-            "$ref": "#/components/schemas/Problem"
-      description: The body is larger than 1 MB
-    UnsupportedMediaType:
-      headers:
-        X-Request-Id:
-          "$ref": "#/components/headers/X-Request-Id"
-      content:
-        application/problem+json:
-          schema:
-            "$ref": "#/components/schemas/Problem"
-      description: The body is not `application/json`
-    Unexpected:
-      headers:
-        X-Request-Id:
-          "$ref": "#/components/headers/X-Request-Id"
-      content:
-        application/problem+json:
-          schema:
-            "$ref": "#/components/schemas/Problem"
-      description: "`500` for an unexpected failure, `503` with `Retry-After` while
-        the database is unavailable or a lock wait times out"
-  headers:
-    X-Request-Id:
-      description: Identifies the request in logs and in problem documents.
-      schema:
-        type: string

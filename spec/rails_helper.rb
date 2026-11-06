@@ -3,7 +3,7 @@ if ENV["COVERAGE"]
   SimpleCov.start "rails" do
     enable_coverage :branch
     minimum_coverage line: 100, branch: 100
-    add_filter %w[ /config/ /db/ /spec/ ]
+    skip %w[ /config/ /db/ /spec/ ]
   end
 end
 

@@ -51,9 +51,3 @@ RSpec.configure do |config|
     }
   }
 end
-
-RSpec.configure do |config|
-  config.before(:suite) do
-    Rswag::Specs::SwaggerFormatter.prepend(OpenAPIEnrichment) if defined?(Rswag::Specs::SwaggerFormatter)
-  end
-end
