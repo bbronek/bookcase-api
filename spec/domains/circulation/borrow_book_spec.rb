@@ -51,8 +51,17 @@ RSpec.describe Circulation::BorrowBook do
     }
   end
 
-  it "rejects a missing card number before touching the book" do
-    expect { borrow(card_number: " ", serial_number: "999999") }.to raise_error(described_class::CardNumberMissing, "can't be blank")
+  it "rejects a missing card number" do
+    expect { borrow(card_number: " ") }.to raise_error(described_class::CardNumberMissing, "can't be blank")
+  end
+
+  it "checks the book before the card number, so an unavailable book answers the same for any input" do
+    withdrawn = create(:book, :withdrawn)
+    borrowed = create(:borrowing).book
+
+    expect { borrow(serial_number: "999999", card_number: " ") }.to raise_error(ActiveRecord::RecordNotFound)
+    expect { borrow(serial_number: withdrawn.serial_number, card_number: " ") }.to raise_error(Catalog::BookWithdrawn)
+    expect { borrow(serial_number: borrowed.serial_number, card_number: "999999") }.to raise_error(Circulation::BookBorrowed)
   end
 
   it "refuses a withdrawn book and does not find unknown ones" do

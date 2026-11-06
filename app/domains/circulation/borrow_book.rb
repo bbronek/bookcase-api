@@ -21,20 +21,22 @@ module Circulation
     end
 
     def call
-      raise CardNumberMissing if @card_number.blank?
-
       Book.transaction do
         book = Book.lock.find_by!(serial_number: @serial_number)
         raise Catalog::BookWithdrawn, book.serial_number if book.withdrawn?
-
-        reader = Reader.find_by(card_number: @card_number) || raise(UnknownReader)
         raise BookBorrowed, book.serial_number if book.borrowed?
 
-        lend(book, reader)
+        lend(book, find_reader!)
       end
     end
 
     private
+
+    def find_reader!
+      raise CardNumberMissing if @card_number.blank?
+
+      Reader.find_by(card_number: @card_number) || raise(UnknownReader)
+    end
 
     def lend(book, reader)
       borrowed_at = @borrowed_at || Time.current
