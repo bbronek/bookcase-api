@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Working agreement for humans and coding agents. Update this file when a convention changes.
+Instructions for AI coding agents working in this repository. Update this file in the same change whenever a convention changes.
 
 ## Scope and structure
 
