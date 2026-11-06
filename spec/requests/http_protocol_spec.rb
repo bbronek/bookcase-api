@@ -37,33 +37,13 @@ RSpec.describe "HTTP protocol" do
         expect(response).to be_problem(:bad_request)
       end
     end
-
-    it "answers 413 for bodies over 1 MB" do
-      post "/api/v1/books", params: { title: "x" * 1_100_000 }.to_json, headers: { "Content-Type" => "application/json" }
-
-      expect(response).to be_problem(:content_too_large, detail: "Request bodies are limited to 1048576 bytes")
-    end
   end
 
   describe "routing" do
-    it "answers 405 with the allowed methods for a known path" do
+    it "answers 404 when a method has no route" do
       patch "/api/v1/books/000001"
 
-      expect(response).to be_problem(:method_not_allowed)
-      expect(response.headers["Allow"]).to eq("GET, HEAD, DELETE, OPTIONS")
-    end
-
-    it "lists only the methods a path supports" do
-      get "/api/v1/borrowings/#{SecureRandom.uuid_v7}/return"
-
-      expect(response.headers["Allow"]).to eq("POST, OPTIONS")
-    end
-
-    it "answers OPTIONS with the allowed methods" do
-      process :options, "/api/v1/books"
-
-      expect(response).to have_http_status(:no_content)
-      expect(response.headers["Allow"]).to eq("GET, HEAD, POST, OPTIONS")
+      expect(response).to be_problem(:not_found, detail: "No route matches PATCH /api/v1/books/000001")
     end
 
     it "answers 404 in the problem format for unknown paths and blank identifiers" do

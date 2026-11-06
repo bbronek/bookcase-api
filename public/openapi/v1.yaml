@@ -14,8 +14,7 @@ info:
     - **Identifiers.** Books are addressed by their six-digit serial number and readers by their six-digit card
       number. Borrowings have a UUIDv7 id.
     - **Media types.** Requests with a body must be `application/json`; anything else is `415`.
-      Responses are `application/json`, errors are `application/problem+json`. Bodies over 1 MB answer `413`;
-      above 10 MB the web server refuses them before the application, without a problem document.
+      Responses are `application/json`, application errors are `application/problem+json`.
     - **Errors** follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457): `type`, `title`, `status`, `detail`,
       `instance`, the `request_id` (also in the `X-Request-Id` header) and, for invalid attributes, `errors`
       with a JSON pointer per attribute.

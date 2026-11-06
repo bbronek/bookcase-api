@@ -26,7 +26,7 @@ All resource routes now live under `/api/v1`; the earlier unversioned routes are
 
 Book and reader numbers are six-digit strings. Text is trimmed without changing internal whitespace or Unicode; control characters are rejected. Email validation uses Ruby's standard pattern. Lists use `limit` and `after`, with a next-page Link header. Books can be filtered by `status`. Errors use problem JSON; the reference documents response bodies and status codes.
 
-Creates return 201 with Location. Duplicate serial numbers, card numbers and emails return 409, even when the request is identical. Repeated borrowing requests also return 409. Returns and withdrawals remain idempotent.
+Creates return 201 with Location. Duplicate serial numbers, card numbers and emails return 409, even when the request is identical. Repeated borrowing requests also return 409. Returns and withdrawals remain idempotent. Unknown routes and unsupported methods return 404. Request-size enforcement belongs to Puma; server-level errors may use its own format.
 
 ## Decisions
 

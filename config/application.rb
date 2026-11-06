@@ -11,7 +11,6 @@ require "action_view/railtie"
 Bundler.require(*Rails.groups)
 
 require_relative "../lib/problem"
-require_relative "../lib/request_body_limit"
 
 module LibraryApi
   class Application < Rails::Application
@@ -23,7 +22,6 @@ module LibraryApi
     config.action_mailer.default_options = { from: "Library <library@example.com>" }
     config.action_mailer.preview_paths = [ root.join("spec/mailers/previews").to_s ]
 
-    config.middleware.insert_after ActionDispatch::RequestId, RequestBodyLimit
     config.action_dispatch.rescue_responses["ActionDispatch::Http::MimeNegotiation::InvalidType"] = :bad_request
     config.exceptions_app = Problem.exceptions_app
     config.host_authorization = {
