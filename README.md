@@ -201,7 +201,7 @@ spec/requests/api/v1/                    ← request specs that also generate th
 ## Notes
 
 - **Commit history** is kept in small steps on purpose. Read it in order to see how the solution evolved.
-- **Conventions** for contributors are recorded in [AGENTS.md](AGENTS.md); [CLAUDE.md](CLAUDE.md) points to it.
+- **Conventions** for contributors and AI coding agents live in [AGENTS.md](AGENTS.md); [CLAUDE.md](CLAUDE.md) loads it for Claude Code.
 
 <details>
 <summary>Production configuration and existing installations</summary>
