@@ -1,3 +1,17 @@
+x-app: &app
+  image: ${APP_IMAGE:-library-api:development}
+  build:
+    context: .
+    target: development
+  environment:
+    DB_HOST: db
+    DB_PORT: "5432"
+    RAILS_LOG_TO_STDOUT: "1"
+    RAILS_LOG_LEVEL: info
+  volumes:
+    - mails:/app/tmp/mails
+  restart: unless-stopped
+
 services:
   db:
     image: postgres:18-alpine
@@ -13,37 +27,47 @@ services:
       interval: 2s
       timeout: 3s
       retries: 20
+    restart: unless-stopped
 
-  # One-shot: creates the database, loads the schema and seeds on first run, migrates afterwards.
-  # web and worker wait for it, so neither boots against a half-migrated database.
   migrate:
-    build: .
+    <<: *app
     command: bin/rails db:prepare
-    environment: &rails_env
-      DB_HOST: db
-      DB_PORT: "5432"
-      RAILS_LOG_TO_STDOUT: "1"
+    restart: "no"
     depends_on:
       db:
         condition: service_healthy
 
   web:
-    build: .
-    command: bin/rails server -b 0.0.0.0
+    <<: *app
     ports:
-      - "${PORT:-3000}:3000"
-    environment: *rails_env
+      - "127.0.0.1:${PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "ruby", "-rnet/http", "-e", "exit Net::HTTP.get_response(URI('http://localhost:3000/health/ready')).is_a?(Net::HTTPSuccess)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
     depends_on:
       migrate:
         condition: service_completed_successfully
+    develop:
+      watch:
+        - { action: sync+restart, path: ./app, target: /app/app }
+        - { action: sync+restart, path: ./config, target: /app/config }
+        - { action: rebuild, path: Gemfile.lock }
 
   worker:
-    build: .
+    <<: *app
     command: bin/jobs
-    environment: *rails_env
     depends_on:
       migrate:
         condition: service_completed_successfully
+    develop:
+      watch:
+        - { action: sync+restart, path: ./app, target: /app/app }
+        - { action: sync+restart, path: ./config, target: /app/config }
+        - { action: rebuild, path: Gemfile.lock }
 
 volumes:
   postgres-18:
+  mails:

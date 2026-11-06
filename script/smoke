@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+export COMPOSE_PROJECT_NAME="library-api-smoke"
+export APP_IMAGE="library-api:smoke"
+export PORT="${PORT:-3097}"
+export DB_PUBLISHED_PORT="${DB_PUBLISHED_PORT:-5497}"
+base="http://localhost:${PORT}"
+production_port="${PRODUCTION_PORT:-3096}"
+
+cleanup() {
+  docker rm --force library-api-smoke-production library-api-smoke-worker > /dev/null 2>&1 || true
+  docker compose down --volumes --remove-orphans > /dev/null 2>&1 || true
+  docker image rm library-api:smoke library-api:production > /dev/null 2>&1 || true
+}
+trap cleanup EXIT
+trap 'echo "smoke test failed" >&2; docker compose logs >&2; docker logs library-api-smoke-production >&2 2> /dev/null; docker logs library-api-smoke-worker >&2 2> /dev/null || true' ERR
+
+step() { printf '%s\n' "-- $*"; }
+status_of() { curl --silent --output /dev/null --write-out '%{http_code}' "$@"; }
+
+step "docker compose up from an empty database"
+docker compose up --detach --build --wait --wait-timeout 180
+
+step "the API is ready and seeded"
+curl --fail --silent "$base/health/ready" | jq --exit-status '.status == "ok"' > /dev/null
+curl --fail --silent "$base/api/v1/books" | jq --exit-status 'length == 5' > /dev/null
+
+step "a book can be added, borrowed and returned"
+[[ $(status_of -X POST "$base/api/v1/books" -H 'Content-Type: application/json' -d '{"serial_number":"900001","title":"Smoke","author":"Test"}') == 201 ]]
+id=$(curl --fail --silent -X POST "$base/api/v1/books/900001/borrowings" -H 'Content-Type: application/json' -d '{"card_number":"100003"}' | jq --raw-output '.id')
+[[ $(status_of -X POST "$base/api/v1/borrowings/$id/return") == 200 ]]
+[[ $(status_of "$base/api/v1/books/000001/borrowings") == 405 ]]
+
+step "the worker sends the reminder emails"
+docker compose exec -T web bin/rails runner 'ScheduleDueRemindersJob.perform_later' > /dev/null
+for _ in $(seq 1 30); do
+  sent=$(docker compose exec -T web sh -c 'ls tmp/mails 2> /dev/null | wc -l')
+  [[ "$sent" -ge 2 ]] && break
+  sleep 1
+done
+[[ "$sent" -ge 2 ]]
+
+step "the test suite passes inside the development image"
+docker compose exec -T web sh -c 'bin/rails db:test:prepare && bundle exec rspec' > /dev/null
+
+step "the production image serves the API and runs the worker"
+docker build --quiet --target production --tag library-api:production . > /dev/null
+production_env=(
+  --network "${COMPOSE_PROJECT_NAME}_default"
+  -e DATABASE_URL="postgres://postgres:postgres@db/library_api_production" -e SECRET_KEY_BASE=smoke
+  -e APP_HOSTS=localhost -e MAILER_FROM="Library <library@example.com>" -e SMTP_ADDRESS=smtp.invalid
+)
+docker run --rm "${production_env[@]}" library-api:production bin/rails db:prepare > /dev/null
+docker run --detach --name library-api-smoke-production "${production_env[@]}" \
+  --publish "127.0.0.1:${production_port}:3000" library-api:production > /dev/null
+docker run --detach --name library-api-smoke-worker "${production_env[@]}" library-api:production bin/jobs > /dev/null
+for _ in $(seq 1 30); do
+  [[ $(docker inspect --format '{{.State.Health.Status}}' library-api-smoke-production) == healthy ]] && break
+  sleep 1
+done
+production="http://localhost:${production_port}"
+curl --fail --silent "$production/health/ready" | jq --exit-status '.status == "ok"' > /dev/null
+[[ $(status_of -X POST "$production/api/v1/books" -H 'Content-Type: application/json' -d '{"serial_number":"900001","title":"Smoke","author":"Test"}') == 201 ]]
+[[ $(status_of -H 'Host: attacker.example' "$production/api/v1/books") == 403 ]]
+for _ in $(seq 1 30); do
+  workers=$(docker run --rm "${production_env[@]}" library-api:production bin/rails runner 'print SolidQueue::Process.where(kind: "Worker").count')
+  [[ "$workers" -ge 1 ]] && break
+  sleep 1
+done
+[[ "$workers" -ge 1 ]]
+
+step "smoke test passed"
