@@ -1,6 +1,6 @@
 # Development-oriented image: single stage, build tools kept, logs to stdout.
 # A production image would be multi-stage with a precompiled bootsnap cache and no build tools.
-FROM ruby:4.0-slim
+FROM ruby:4.0.9-slim
 
 WORKDIR /app
 
