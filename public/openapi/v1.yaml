@@ -45,6 +45,9 @@ info:
     - **Request ids.** Every response has an `X-Request-Id` header, and production logs are tagged with it.
       Quote it when reporting a problem.
     - **Authentication** is out of scope for this version.
+servers:
+- url: "/"
+  description: The server this document is served from
 tags:
 - name: Books
   description: The catalog. Withdrawing a book keeps its borrowing history.
@@ -611,12 +614,9 @@ paths:
         description: Six digits, leading zeros included.
   "/health":
     get:
-      summary: Health check
-      tags:
-      - Health
-      operationId: getHealth
-      description: 200 while the application can reach the database, 503 otherwise.
       responses:
+        '400':
+          "$ref": "#/components/responses/BadRequest"
         '200':
           description: Healthy
           content:
@@ -638,6 +638,11 @@ paths:
                 status: unavailable
               schema:
                 "$ref": "#/components/schemas/Health"
+      summary: Health check
+      tags:
+      - Health
+      operationId: getHealth
+      description: 200 while the application can reach the database, 503 otherwise.
 components:
   schemas:
     NewBook:

@@ -31,7 +31,8 @@ module SharedOpenAPIResponses
     "/api/v1/borrowings/{id}" => { get: MALFORMED.merge(ALWAYS) },
     "/api/v1/borrowings/{id}/return" => { post: MALFORMED.merge(ALWAYS) },
     "/api/v1/readers" => { post: MALFORMED.merge(WITH_BODY, ALWAYS) },
-    "/api/v1/readers/{card_number}" => { get: MALFORMED.merge(ALWAYS) }
+    "/api/v1/readers/{card_number}" => { get: MALFORMED.merge(ALWAYS) },
+    "/health" => { get: MALFORMED }
   }.freeze
 
   def self.paths = OPERATIONS.transform_values { |verbs| verbs.transform_values { |responses| { responses: } } }
@@ -91,6 +92,7 @@ RSpec.configure do |config|
           - **Authentication** is out of scope for this version.
         MARKDOWN
       },
+      servers: [ { url: "/", description: "The server this document is served from" } ],
       tags: [
         { name: "Books", description: "The catalog. Withdrawing a book keeps its borrowing history." },
         { name: "Borrowings", description: "Lending a book to a reader and taking it back." },
