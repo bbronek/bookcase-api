@@ -49,14 +49,12 @@ module OpenAPISchemas
       title: { type: :string },
       status: { type: :integer },
       detail: { type: :string },
-      instance: { type: :string, format: :"uri-reference", description: "The request path." },
-      request_id: { type: :string, description: "Same as the `X-Request-Id` response header." },
       errors: {
         type: :array,
         description: "Present when attributes are invalid.",
         items: object({ pointer: { type: :string, example: "#/title" }, detail: { type: :string, example: "can't be blank" } })
       }
-    }, optional: %i[ detail instance request_id errors ]),
+    }, optional: %i[ detail errors ]),
     Health: object({ status: { type: :string, enum: %w[ ok unavailable ] } })
   }.freeze
 end

@@ -28,7 +28,7 @@ module Bookcase
     config.exceptions_app = Problem.exceptions_app
     config.host_authorization = {
       exclude: ->(request) { request.path == "/health" },
-      response_app: ->(env) { Problem.rack_response(env, 403, detail: "Host not allowed") }
+      response_app: ->(_env) { Problem.rack_response(403, detail: "Host not allowed") }
     }
   end
 end

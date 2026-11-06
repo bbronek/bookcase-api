@@ -8,6 +8,6 @@ class RejectInvalidUtf8Body
     env["rack.input"] = StringIO.new(body)
     return @app.call(env) if body.dup.force_encoding(Encoding::UTF_8).valid_encoding?
 
-    Problem.rack_response(env, 400, detail: "Request body must be valid UTF-8")
+    Problem.rack_response(400, detail: "Request body must be valid UTF-8")
   end
 end

@@ -47,6 +47,16 @@ RSpec.describe "HTTP protocol" do
     end
   end
 
+  describe "request ids" do
+    it "puts an X-Request-Id on every response, errors included, so a report can be matched to the logs" do
+      [ "/api/v1/books", "/api/v1/books/999999", "/nope" ].each do |path|
+        get path
+
+        expect(response.headers["X-Request-Id"]).to match(/\A\h{8}-\h{4}-\h{4}-\h{4}-\h{12}\z/), path
+      end
+    end
+  end
+
   describe "routing" do
     it "answers 404 when a method has no route" do
       patch "/api/v1/books/000001"
@@ -110,13 +120,11 @@ RSpec.describe "HTTP protocol" do
     end
 
     it "answers a host that is not allowed with a 403 problem document" do
-      env = Rack::MockRequest.env_for("/api/v1/books", "action_dispatch.request_id" => "request-1")
-
-      status, headers, body = Rails.application.config.host_authorization.fetch(:response_app).call(env)
+      status, headers, body = Rails.application.config.host_authorization.fetch(:response_app).call(Rack::MockRequest.env_for("/"))
 
       expect([ status, headers["content-type"], JSON.parse(body.join) ]).to eq([
         403, "application/problem+json",
-        { "type" => "about:blank", "title" => "Forbidden", "status" => 403, "detail" => "Host not allowed", "instance" => "/api/v1/books", "request_id" => "request-1" }
+        { "type" => "about:blank", "title" => "Forbidden", "status" => 403, "detail" => "Host not allowed" }
       ])
     end
 
@@ -162,7 +170,7 @@ RSpec.describe "HTTP protocol" do
       get "/api/v1/books"
 
       expect(response).to be_problem(:internal_server_error)
-      expect(json).to include(title: "Internal Server Error", instance: "/api/v1/books")
+      expect(json).to include(title: "Internal Server Error")
       expect(response.body).not_to include("secret internals")
     end
   end

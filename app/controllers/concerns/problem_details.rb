@@ -52,9 +52,6 @@ module ProblemDetails
 
   def render_problem(status, type: nil, detail: nil, errors: nil)
     code = Rack::Utils.status_code(status)
-    problem = Problem.document(
-      status: code, type:, detail:, errors:, instance: request.path, request_id: request.request_id
-    )
-    render json: problem, status: code, content_type: Problem::MEDIA_TYPE
+    render json: Problem.document(status: code, type:, detail:, errors:), status: code, content_type: Problem::MEDIA_TYPE
   end
 end

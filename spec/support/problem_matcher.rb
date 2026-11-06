@@ -2,7 +2,7 @@ RSpec::Matchers.define :be_problem do |status, type: nil, detail: nil, errors: n
   match do |response|
     @problem = JSON.parse(response.body, symbolize_names: true)
     expected = { type: type ? "/problems##{type}" : "about:blank", status: Rack::Utils.status_code(status),
-                 detail:, errors:, request_id: be_present }.compact
+                 detail:, errors: }.compact
 
     response.media_type == Problem::MEDIA_TYPE && values_match?(include(expected), @problem)
   end

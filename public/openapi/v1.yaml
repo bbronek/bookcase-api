@@ -16,9 +16,10 @@ info:
     - **Media types.** Requests with a body must be `application/json` and valid UTF-8; anything else is
       `415` or `400`. Responses are `application/json`, errors are `application/problem+json`. Only bodies over
       10 MB are refused by the web server itself, with a plain-text `413`.
-    - **Errors** follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457): `type`, `title`, `status`, `detail`,
-      `instance`, the `request_id` (also in the `X-Request-Id` header) and, for invalid attributes, `errors`
-      with a JSON pointer per attribute.
+    - **Errors** follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457): `type`, `title`, `status`, `detail`
+      and, for invalid attributes, `errors` with a JSON pointer per attribute.
+    - **Request ids.** Every response carries an `X-Request-Id` header, and production logs are tagged with it.
+      Quote it when reporting a problem.
     - **Duplicates.** Creates answer `201` with `Location`. An existing serial number, card number or email,
       or a book already borrowed by any reader, answers `409`, even for identical requests.
       Repeating a return answers `200` unchanged, and repeating a withdrawal answers `204`.
@@ -83,8 +84,6 @@ paths:
                 title: Bad Request
                 status: 400
                 detail: limit must be an integer between 1 and 100
-                instance: "/api/v1/books"
-                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
       summary: List books
@@ -147,8 +146,6 @@ paths:
                 title: Serial number taken
                 status: 409
                 detail: Serial number 000001 is already taken
-                instance: "/api/v1/books"
-                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
         '422':
@@ -160,8 +157,6 @@ paths:
                 title: Validation failed
                 status: 422
                 detail: The request has invalid attributes
-                instance: "/api/v1/books"
-                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
                 errors:
                 - pointer: "#/author"
                   detail: must be a string
@@ -234,8 +229,6 @@ paths:
                 title: Not Found
                 status: 404
                 detail: Book not found
-                instance: "/api/v1/books/000001"
-                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
       summary: Get a book with its borrowing history
@@ -260,8 +253,6 @@ paths:
                 title: Not Found
                 status: 404
                 detail: Book not found
-                instance: "/api/v1/books/000001"
-                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
         '409':
@@ -273,8 +264,6 @@ paths:
                 title: Book borrowed
                 status: 409
                 detail: Book 000001 is currently borrowed
-                instance: "/api/v1/books/000001"
-                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
       summary: Withdraw a book
@@ -336,8 +325,6 @@ paths:
                 title: Not Found
                 status: 404
                 detail: Book not found
-                instance: "/api/v1/books/999999/borrowings"
-                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
         '409':
@@ -349,8 +336,6 @@ paths:
                 title: Book borrowed
                 status: 409
                 detail: Book 000001 is currently borrowed
-                instance: "/api/v1/books/000001/borrowings"
-                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
         '422':
@@ -362,8 +347,6 @@ paths:
                 title: Validation failed
                 status: 422
                 detail: The request has invalid attributes
-                instance: "/api/v1/books/000001/borrowings"
-                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
                 errors:
                 - pointer: "#/card_number"
                   detail: does not match any reader
@@ -426,8 +409,6 @@ paths:
                 title: Not Found
                 status: 404
                 detail: Borrowing not found
-                instance: "/api/v1/borrowings/019a0000-0000-7000-8000-000000000001"
-                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
       summary: Get a borrowing
@@ -482,8 +463,6 @@ paths:
                 title: Not Found
                 status: 404
                 detail: Borrowing not found
-                instance: "/api/v1/borrowings/019a0000-0000-7000-8000-000000000001/return"
-                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
       summary: Return a book
@@ -536,8 +515,6 @@ paths:
                 title: Email taken
                 status: 409
                 detail: This email is already registered
-                instance: "/api/v1/readers"
-                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
         '422':
@@ -549,8 +526,6 @@ paths:
                 title: Validation failed
                 status: 422
                 detail: The request has invalid attributes
-                instance: "/api/v1/readers"
-                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
                 errors:
                 - pointer: "#/card_number"
                   detail: must be exactly six digits
@@ -599,8 +574,6 @@ paths:
                 title: Not Found
                 status: 404
                 detail: Reader not found
-                instance: "/api/v1/readers/100001"
-                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
       summary: Get a reader
@@ -907,13 +880,6 @@ components:
           type: integer
         detail:
           type: string
-        instance:
-          type: string
-          format: uri-reference
-          description: The request path.
-        request_id:
-          type: string
-          description: Same as the `X-Request-Id` response header.
         errors:
           type: array
           description: Present when attributes are invalid.

@@ -60,9 +60,10 @@ RSpec.configure do |config|
           - **Media types.** Requests with a body must be `application/json` and valid UTF-8; anything else is
             `415` or `400`. Responses are `application/json`, errors are `application/problem+json`. Only bodies over
             10 MB are refused by the web server itself, with a plain-text `413`.
-          - **Errors** follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457): `type`, `title`, `status`, `detail`,
-            `instance`, the `request_id` (also in the `X-Request-Id` header) and, for invalid attributes, `errors`
-            with a JSON pointer per attribute.
+          - **Errors** follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457): `type`, `title`, `status`, `detail`
+            and, for invalid attributes, `errors` with a JSON pointer per attribute.
+          - **Request ids.** Every response carries an `X-Request-Id` header, and production logs are tagged with it.
+            Quote it when reporting a problem.
           - **Duplicates.** Creates answer `201` with `Location`. An existing serial number, card number or email,
             or a book already borrowed by any reader, answers `409`, even for identical requests.
             Repeating a return answers `200` unchanged, and repeating a withdrawal answers `204`.

@@ -2,7 +2,7 @@
 
 A JSON API for library staff: keep a catalog of physical books, register readers, lend and take back books with each book's full borrowing history, and email readers three days before a book is due and on the due date.
 
-**Status:** feature-complete · 205 specs · `bin/ci` runs lint, security scans, database checks and the specs · `script/smoke` runs everything in Docker
+**Status:** feature-complete · 206 specs · `bin/ci` runs lint, security scans, database checks and the specs · `script/smoke` runs everything in Docker
 
 ![Ruby 4.0.9](https://img.shields.io/badge/Ruby-4.0.9-CC342D?logo=ruby&logoColor=white)
 ![Rails 8.1](https://img.shields.io/badge/Rails-8.1_API-D30001?logo=rubyonrails&logoColor=white)
