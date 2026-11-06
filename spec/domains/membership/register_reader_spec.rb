@@ -18,24 +18,22 @@ RSpec.describe Membership::RegisterReader do
     }
   end
 
-  it "answers a repeated identical request with the registered reader" do
-    original = register
+  it "refuses a duplicate even when its attributes are identical" do
+    register
 
-    replay = register(email: "ADA@example.com")
-
-    expect(replay).to eq(original)
-    expect(replay).not_to be_previously_new_record
+    expect { register(email: "ADA@example.com") }.to raise_error(Membership::RegisterReader::CardNumberTaken)
+    expect(Reader.count).to eq(1)
   end
 
   it "refuses a card number that belongs to a different reader" do
     register
 
-    expect { register(full_name: "Augusta Ada King") }.to raise_error(Membership::RegisterReader::CardNumberTaken, "Card number 100001 belongs to a different reader")
+    expect { register(full_name: "Augusta Ada King") }.to raise_error(Membership::RegisterReader::CardNumberTaken, "Card number 100001 is already registered")
   end
 
   it "refuses an email that belongs to a different reader" do
     register
 
-    expect { register(card_number: "100002") }.to raise_error(Membership::RegisterReader::EmailTaken, "This email belongs to a different reader")
+    expect { register(card_number: "100002") }.to raise_error(Membership::RegisterReader::EmailTaken, "This email is already registered")
   end
 end

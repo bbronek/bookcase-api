@@ -6,13 +6,17 @@ return unless Rails.env.development?
   [ "000003", "Neuromancer", "William Gibson" ],
   [ "000004", "Solaris", "Stanisław Lem" ],
   [ "000005", "The Dispossessed", "Ursula K. Le Guin" ]
-].each { |serial_number, title, author| Catalog::AddBook.call(serial_number:, title:, author:) }
+].each do |serial_number, title, author|
+  Catalog::AddBook.call(serial_number:, title:, author:) unless Book.exists?(serial_number:)
+end
 
 [
   [ "100001", "Ada Lovelace", "ada@example.com" ],
   [ "100002", "Alan Turing", "alan@example.com" ],
   [ "100003", "Grace Hopper", "grace@example.com" ]
-].each { |card_number, full_name, email| Membership::RegisterReader.call(card_number:, full_name:, email:) }
+].each do |card_number, full_name, email|
+  Membership::RegisterReader.call(card_number:, full_name:, email:) unless Reader.exists?(card_number:)
+end
 
 if Borrowing.none?
   borrowed_to_be_due_soon = Reminder::DUE_SOON_PERIOD.from_now - Borrowing::PERIOD

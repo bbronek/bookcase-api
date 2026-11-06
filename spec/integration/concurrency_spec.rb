@@ -98,7 +98,7 @@ RSpec.describe "Concurrent requests" do
     expect(waiting_borrow.value.borrowed_at).to be >= earlier.reload.returned_at
   end
 
-  it "answers the second of two identical adds with the first book" do
+  it "refuses the second of two identical adds" do
     second = nil
 
     ActiveRecord::Base.transaction do
@@ -106,11 +106,11 @@ RSpec.describe "Concurrent requests" do
       second = start_waiting_for_lock { Catalog::AddBook.call(serial_number: "000002", title: "Solaris", author: "Stanisław Lem") }
     end
 
-    expect(second.value).to have_attributes(serial_number: "000002", previously_new_record?: false)
+    expect { second.value }.to raise_error(Catalog::AddBook::SerialNumberTaken)
     expect(Book.where(serial_number: "000002").count).to eq(1)
   end
 
-  it "answers the second of two identical registrations with the first reader" do
+  it "refuses the second of two identical registrations" do
     second = nil
 
     ActiveRecord::Base.transaction do
@@ -118,7 +118,7 @@ RSpec.describe "Concurrent requests" do
       second = start_waiting_for_lock { Membership::RegisterReader.call(card_number: "100003", full_name: "Grace Hopper", email: "grace@example.com") }
     end
 
-    expect(second.value).to have_attributes(card_number: "100003", previously_new_record?: false)
+    expect { second.value }.to raise_error(Membership::RegisterReader::CardNumberTaken)
     expect(Reader.where(card_number: "100003").count).to eq(1)
   end
 

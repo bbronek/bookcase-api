@@ -16,7 +16,7 @@ module Api
 
       def create
         book = Catalog::AddBook.call(**body_attributes(:serial_number, :title, :author))
-        render_created_or_existing book, with: BookSerializer, location: api_v1_book_path(book)
+        render_created book, with: BookSerializer, location: api_v1_book_path(book)
       end
 
       def destroy

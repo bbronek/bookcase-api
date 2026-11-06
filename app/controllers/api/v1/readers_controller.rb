@@ -15,7 +15,7 @@ module Api
 
       def create
         reader = Membership::RegisterReader.call(**body_attributes(:card_number, :full_name, :email))
-        render_created_or_existing reader, with: ReaderSerializer, location: api_v1_reader_path(reader)
+        render_created reader, with: ReaderSerializer, location: api_v1_reader_path(reader)
       end
     end
   end

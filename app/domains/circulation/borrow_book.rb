@@ -4,7 +4,7 @@ module Circulation
       self.problem_type = "book-already-borrowed"
 
       def initialize(serial_number)
-        super("Book #{serial_number} is already borrowed by another reader")
+        super("Book #{serial_number} is already borrowed")
       end
     end
 
@@ -36,10 +36,9 @@ module Circulation
         raise Catalog::BookWithdrawn, book.serial_number if book.withdrawn?
 
         reader = Reader.find_by(card_number: @card_number) || raise(UnknownReader)
-        current_borrowing = book.current_borrowing
-        raise BookAlreadyBorrowed, book.serial_number if current_borrowing && current_borrowing.reader_id != reader.id
+        raise BookAlreadyBorrowed, book.serial_number if book.current_borrowing
 
-        current_borrowing || lend(book, reader)
+        lend(book, reader)
       end
     end
 

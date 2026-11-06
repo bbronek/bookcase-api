@@ -10,7 +10,7 @@ module Api
         borrowing = Circulation::BorrowBook.call(
           serial_number: path_parameter(:book_serial_number), **body_attributes(:card_number)
         )
-        render_created_or_existing borrowing, with: BorrowingSerializer, location: api_v1_borrowing_path(borrowing)
+        render_created borrowing, with: BorrowingSerializer, location: api_v1_borrowing_path(borrowing)
       end
     end
   end

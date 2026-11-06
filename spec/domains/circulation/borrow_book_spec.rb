@@ -24,20 +24,18 @@ RSpec.describe Circulation::BorrowBook do
     expect(borrowing).to have_attributes(borrowed_at: Time.zone.parse("2026-10-01 12:00"), due_on: Date.new(2026, 10, 31))
   end
 
-  it "answers a repeated request by the same reader with the existing borrowing" do
-    original = borrow
+  it "refuses a repeated request by the same reader" do
+    borrow
 
-    replay = borrow
-
-    expect(replay).to eq(original)
-    expect(replay).not_to be_previously_new_record
+    expect { borrow }.to raise_error(described_class::BookAlreadyBorrowed)
+    expect(book.borrowings.count).to eq(1)
   end
 
   it "refuses when another reader has the book" do
     borrow
 
     expect { borrow(card_number: create(:reader).card_number) }
-      .to raise_error(described_class::BookAlreadyBorrowed, "Book 000001 is already borrowed by another reader")
+      .to raise_error(described_class::BookAlreadyBorrowed, "Book 000001 is already borrowed")
   end
 
   it "lends the book again once it has been returned" do

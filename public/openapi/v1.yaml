@@ -19,16 +19,15 @@ info:
     - **Errors** follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457): `type`, `title`, `status`, `detail`,
       `instance`, the `request_id` (also in the `X-Request-Id` header) and, for invalid attributes, `errors`
       with a JSON pointer per attribute.
-    - **Retries are safe.** Repeating a create with the same body answers `200` with the existing resource
-      and its path in `Content-Location`. A repeated borrow is recognized while the book is still out.
-      Repeating a return answers `200` with the returned borrowing, and repeating a delete answers `204`.
-      A create that conflicts with a different existing resource answers `409`.
+    - **Duplicates.** Creates answer `201` with `Location`. An existing serial number, card number or email,
+      or a book already borrowed by any reader, answers `409`, even for identical requests.
+      Repeating a return answers `200` unchanged, and repeating a withdrawal answers `204`.
     - **Pagination.** Lists are ordered and paginated with a keyset cursor: `limit` (1 to 100, default 50) and
       `after`. The next page, when there is one, is in the `Link: <...>; rel="next"` header.
     - **Time.** Timestamps are UTC (RFC 3339). Due dates are calendar dates in the library's time zone,
       Europe/Warsaw. A borrowing lasts 30 days.
     - **Concurrency.** Simultaneous requests on the same book are serialized by a row lock or a unique index.
-      Identical requests get the same result, and conflicting ones get `409`. A request that waits more than
+      Only one active borrowing per book is allowed. A request that waits more than
       2 s for a lock, or runs a statement longer than 5 s, answers `503` with `Retry-After`.
     - **Authentication** is out of scope for this version.
 tags:
@@ -123,8 +122,8 @@ paths:
       tags:
       - Books
       operationId: addBook
-      description: Adds a book to the catalog. Repeating the request with the same
-        attributes answers 200 with the existing book.
+      description: Adds a book to the catalog. A serial number already registered,
+        including a withdrawn book, answers 409.
       parameters: []
       responses:
         '201':
@@ -146,35 +145,15 @@ paths:
                 current_borrowing:
               schema:
                 "$ref": "#/components/schemas/Book"
-        '200':
-          description: Already in the catalog with the same attributes
-          headers:
-            Content-Location:
-              schema:
-                type: string
-                format: uri-reference
-              description: Path of the existing book.
-          content:
-            application/json:
-              example:
-                serial_number: '000001'
-                title: Dune
-                author: Frank Herbert
-                status: available
-                withdrawn_at:
-                current_borrowing:
-              schema:
-                "$ref": "#/components/schemas/Book"
         '409':
-          description: The serial number belongs to a different book, or to a withdrawn
-            one
+          description: The serial number is already registered
           content:
             application/problem+json:
               example:
                 type: "/problems#serial-number-taken"
                 title: Serial number taken
                 status: 409
-                detail: Serial number 000001 belongs to a different book in the catalog
+                detail: Serial number 000001 is already registered
                 instance: "/api/v1/books"
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
@@ -322,9 +301,8 @@ paths:
       - Borrowings
       operationId: borrowBook
       description: |
-        Lends the book to the reader with this card number for 30 days. Repeating the request for the same reader while
-        the book is still out answers 200 with the existing borrowing; another reader gets 409 until the book is returned,
-        and a withdrawn book gets 409 for good.
+        Lends the book to the reader with this card number for 30 days. An already borrowed book answers 409,
+        even for the same reader. A withdrawn book cannot be borrowed.
       parameters: []
       responses:
         '201':
@@ -351,30 +329,6 @@ paths:
                   title: Dune
               schema:
                 "$ref": "#/components/schemas/Borrowing"
-        '200':
-          description: The same reader already has the book
-          headers:
-            Content-Location:
-              schema:
-                type: string
-                format: uri-reference
-              description: Path of the existing borrowing.
-          content:
-            application/json:
-              example:
-                id: '019a0000-0000-7000-8000-000000000001'
-                reader:
-                  card_number: '100001'
-                  full_name: Ada Lovelace
-                  email: ada@example.com
-                borrowed_at: '2026-11-03T09:00:00.000Z'
-                due_on: '2026-12-03'
-                returned_at:
-                book:
-                  serial_number: '000001'
-                  title: Dune
-              schema:
-                "$ref": "#/components/schemas/Borrowing"
         '404':
           description: No book with this serial number
           content:
@@ -389,14 +343,14 @@ paths:
               schema:
                 "$ref": "#/components/schemas/Problem"
         '409':
-          description: Another reader has the book, or the book was withdrawn
+          description: The book is already borrowed or withdrawn
           content:
             application/problem+json:
               example:
                 type: "/problems#book-already-borrowed"
                 title: Book already borrowed
                 status: 409
-                detail: Book 000001 is already borrowed by another reader
+                detail: Book 000001 is already borrowed
                 instance: "/api/v1/books/000001/borrowings"
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
@@ -573,8 +527,8 @@ paths:
       tags:
       - Readers
       operationId: registerReader
-      description: Registers a reader. Repeating the request with the same attributes
-        answers 200 with the existing reader.
+      description: Registers a reader. A card number or email already registered answers
+        409.
       parameters: []
       responses:
         '201':
@@ -593,31 +547,15 @@ paths:
                 email: ada@example.com
               schema:
                 "$ref": "#/components/schemas/Reader"
-        '200':
-          description: Already registered with the same attributes
-          headers:
-            Content-Location:
-              schema:
-                type: string
-                format: uri-reference
-              description: Path of the existing reader.
-          content:
-            application/json:
-              example:
-                card_number: '100001'
-                full_name: Ada Lovelace
-                email: ada@example.com
-              schema:
-                "$ref": "#/components/schemas/Reader"
         '409':
-          description: The card number or email belongs to a different reader
+          description: The card number or email is already registered
           content:
             application/problem+json:
               example:
                 type: "/problems#email-taken"
                 title: Email taken
                 status: 409
-                detail: This email belongs to a different reader
+                detail: This email is already registered
                 instance: "/api/v1/readers"
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:

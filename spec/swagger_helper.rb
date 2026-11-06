@@ -26,16 +26,15 @@ RSpec.configure do |config|
           - **Errors** follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457): `type`, `title`, `status`, `detail`,
             `instance`, the `request_id` (also in the `X-Request-Id` header) and, for invalid attributes, `errors`
             with a JSON pointer per attribute.
-          - **Retries are safe.** Repeating a create with the same body answers `200` with the existing resource
-            and its path in `Content-Location`. A repeated borrow is recognized while the book is still out.
-            Repeating a return answers `200` with the returned borrowing, and repeating a delete answers `204`.
-            A create that conflicts with a different existing resource answers `409`.
+          - **Duplicates.** Creates answer `201` with `Location`. An existing serial number, card number or email,
+            or a book already borrowed by any reader, answers `409`, even for identical requests.
+            Repeating a return answers `200` unchanged, and repeating a withdrawal answers `204`.
           - **Pagination.** Lists are ordered and paginated with a keyset cursor: `limit` (1 to 100, default 50) and
             `after`. The next page, when there is one, is in the `Link: <...>; rel="next"` header.
           - **Time.** Timestamps are UTC (RFC 3339). Due dates are calendar dates in the library's time zone,
             Europe/Warsaw. A borrowing lasts 30 days.
           - **Concurrency.** Simultaneous requests on the same book are serialized by a row lock or a unique index.
-            Identical requests get the same result, and conflicting ones get `409`. A request that waits more than
+            Only one active borrowing per book is allowed. A request that waits more than
             2 s for a lock, or runs a statement longer than 5 s, answers `503` with `Retry-After`.
           - **Authentication** is out of scope for this version.
         MARKDOWN

@@ -54,17 +54,17 @@ module Api
         non_strings = names.select { |name| body.key?(name.to_s) && !body[name.to_s].is_a?(String) }
         raise NonStringAttributes, non_strings if non_strings.any?
 
-        names.index_with { |name| body[name.to_s] }
+        permitted = ActionController::Parameters.new(body).permit(*names)
+        names.index_with { |name| permitted[name] }
       end
 
       def render_resource(resource, with:, status: :ok)
         render json: with.new(resource).serialize, status:
       end
 
-      def render_created_or_existing(record, with:, location:)
-        created = record.previously_new_record?
-        response.set_header(created ? "Location" : "Content-Location", location)
-        render_resource record, with:, status: created ? :created : :ok
+      def render_created(record, with:, location:)
+        response.set_header("Location", location)
+        render_resource record, with:, status: :created
       end
     end
   end

@@ -29,7 +29,7 @@ RSpec.describe "API v1 readers" do
     post "Register a reader" do
       tags "Readers"
       operationId "registerReader"
-      description "Registers a reader. Repeating the request with the same attributes answers 200 with the existing reader."
+      description "Registers a reader. A card number or email already registered answers 409."
       produces "application/json"
       json_body :Reader
 
@@ -45,20 +45,8 @@ RSpec.describe "API v1 readers" do
         end
       end
 
-      response "200", "Already registered with the same attributes" do
-        schema OpenAPISchemas.ref(:Reader)
-        header "Content-Location", schema: { type: :string, format: "uri-reference" }, description: "Path of the existing reader."
-
-        before { create(:reader, **ada_json) }
-
-        run_test! do
-          expect(json).to eq(ada_json)
-          expect(response.headers["Content-Location"]).to eq("/api/v1/readers/100001")
-        end
-      end
-
-      problem_response "409", "The card number or email belongs to a different reader",
-                       type: "email-taken", detail: "This email belongs to a different reader" do
+      problem_response "409", "The card number or email is already registered",
+                       type: "email-taken", detail: "This email is already registered" do
         before { create(:reader, card_number: "100002", email: "ada@example.com") }
       end
 
@@ -114,7 +102,16 @@ RSpec.describe "API v1 readers" do
 
       post "/api/v1/readers", params: { card_number: "100001", full_name: "Ada Lovelace", email: "ada@example.com" }, as: :json
 
-      expect(response).to be_problem(:conflict, type: "card-number-taken", detail: "Card number 100001 belongs to a different reader")
+      expect(response).to be_problem(:conflict, type: "card-number-taken", detail: "Card number 100001 is already registered")
+    end
+
+    it "refuses an identical registration" do
+      create(:reader, **ada_json)
+
+      post "/api/v1/readers", params: ada_json, as: :json
+
+      expect(response).to be_problem(:conflict, type: "card-number-taken")
+      expect(Reader.count).to eq(1)
     end
   end
 end

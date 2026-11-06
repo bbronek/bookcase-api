@@ -50,7 +50,7 @@ RSpec.describe "API v1 books" do
     post "Add a book" do
       tags "Books"
       operationId "addBook"
-      description "Adds a book to the catalog. Repeating the request with the same attributes answers 200 with the existing book."
+      description "Adds a book to the catalog. A serial number already registered, including a withdrawn book, answers 409."
       produces "application/json"
       json_body :NewBook
 
@@ -66,21 +66,9 @@ RSpec.describe "API v1 books" do
         end
       end
 
-      response "200", "Already in the catalog with the same attributes" do
-        schema OpenAPISchemas.ref(:Book)
-        header "Content-Location", schema: { type: :string, format: "uri-reference" }, description: "Path of the existing book."
-
+      problem_response "409", "The serial number is already registered",
+                       type: "serial-number-taken", detail: "Serial number 000001 is already registered" do
         before { create(:book, **dune) }
-
-        run_test! do
-          expect(json).to eq(dune.merge(status: "available", withdrawn_at: nil, current_borrowing: nil))
-          expect(response.headers["Content-Location"]).to eq("/api/v1/books/000001")
-        end
-      end
-
-      problem_response "409", "The serial number belongs to a different book, or to a withdrawn one",
-                       type: "serial-number-taken", detail: "Serial number 000001 belongs to a different book in the catalog" do
-        before { create(:book, **dune, title: "Dune Messiah") }
       end
 
       problem_response "422", "Invalid attributes",
@@ -205,6 +193,16 @@ RSpec.describe "API v1 books" do
   end
 
   describe "POST /api/v1/books" do
+    it "rejects non-string attributes rather than coercing them" do
+      [ true, nil, 123, [ "Dune" ], { name: "Dune" } ].each do |title|
+        post "/api/v1/books", params: dune.merge(title:), as: :json
+
+        expect(response).to be_problem(:unprocessable_content, type: "validation-failed",
+                                                               errors: [ { pointer: "#/title", detail: "must be a string" } ])
+      end
+      expect(Book.count).to eq(0)
+    end
+
     it "accepts JSON with a charset parameter" do
       post "/api/v1/books", params: dune.to_json, headers: { "Content-Type" => "application/json; charset=utf-8" }
 
@@ -253,7 +251,7 @@ RSpec.describe "API v1 books" do
       expect(response).to be_problem(:conflict, type: "book-withdrawn", detail: "Book 000001 was withdrawn from the catalog")
 
       post "/api/v1/books", params: dune, as: :json
-      expect(response).to be_problem(:conflict, type: "book-withdrawn")
+      expect(response).to be_problem(:conflict, type: "serial-number-taken")
     end
   end
 end

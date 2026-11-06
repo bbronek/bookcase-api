@@ -28,9 +28,8 @@ RSpec.describe "API v1 borrowings" do
       tags "Borrowings"
       operationId "borrowBook"
       description <<~TEXT
-        Lends the book to the reader with this card number for 30 days. Repeating the request for the same reader while
-        the book is still out answers 200 with the existing borrowing; another reader gets 409 until the book is returned,
-        and a withdrawn book gets 409 for good.
+        Lends the book to the reader with this card number for 30 days. An already borrowed book answers 409,
+        even for the same reader. A withdrawn book cannot be borrowed.
       TEXT
       produces "application/json"
       json_body :NewBorrowing
@@ -48,24 +47,12 @@ RSpec.describe "API v1 borrowings" do
         end
       end
 
-      response "200", "The same reader already has the book" do
-        schema OpenAPISchemas.ref(:Borrowing)
-        header "Content-Location", schema: { type: :string, format: "uri-reference" }, description: "Path of the existing borrowing."
-
-        let!(:existing) { borrow_dune(borrowed_at: 1.day.ago) }
-
-        run_test! do
-          expect(json).to eq(borrowing_json(existing, borrowed_at: "2026-11-03T09:00:00.000Z", due_on: "2026-12-03"))
-          expect(response.headers["Content-Location"]).to eq("/api/v1/borrowings/#{existing.id}")
-        end
-      end
-
       problem_response "404", "No book with this serial number", detail: "Book not found" do
         let(:serial_number) { "999999" }
       end
 
-      problem_response "409", "Another reader has the book, or the book was withdrawn",
-                       type: "book-already-borrowed", detail: "Book 000001 is already borrowed by another reader" do
+      problem_response "409", "The book is already borrowed or withdrawn",
+                       type: "book-already-borrowed", detail: "Book 000001 is already borrowed" do
         before { borrow_dune(card_number: create(:reader).card_number) }
       end
 
@@ -132,6 +119,15 @@ RSpec.describe "API v1 borrowings" do
   end
 
   describe "POST /api/v1/books/{serial_number}/borrowings" do
+    it "refuses a repeated borrow by the same reader" do
+      borrow_dune
+
+      post "/api/v1/books/000001/borrowings", params: { card_number: "100001" }, as: :json
+
+      expect(response).to be_problem(:conflict, type: "book-already-borrowed")
+      expect(Borrowing.count).to eq(1)
+    end
+
     it "requires a card number" do
       post "/api/v1/books/000001/borrowings", params: {}, as: :json
 

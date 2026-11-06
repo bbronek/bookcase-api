@@ -4,7 +4,7 @@ module Membership
       self.problem_type = "card-number-taken"
 
       def initialize(card_number)
-        super("Card number #{card_number} belongs to a different reader")
+        super("Card number #{card_number} is already registered")
       end
     end
 
@@ -12,7 +12,7 @@ module Membership
       self.problem_type = "email-taken"
 
       def initialize
-        super("This email belongs to a different reader")
+        super("This email is already registered")
       end
     end
 
@@ -23,22 +23,11 @@ module Membership
     end
 
     def call
-      @reader.validate!
-      existing_reader_if_identical! || @reader.tap(&:save!)
+      Reader.transaction(requires_new: true) { @reader.tap(&:save!) }
     rescue ActiveRecord::RecordNotUnique
-      existing_reader_if_identical! || raise(EmailTaken)
+      raise CardNumberTaken, @reader.card_number if Reader.exists?(card_number: @reader.card_number)
+
+      raise EmailTaken
     end
-
-    private
-
-    def existing_reader_if_identical!
-      existing = Reader.find_by(card_number: @reader.card_number)
-      return if existing.nil?
-      raise CardNumberTaken, existing.card_number unless same_name_and_email?(existing)
-
-      existing
-    end
-
-    def same_name_and_email?(reader) = reader.slice(:full_name, :email) == @reader.slice(:full_name, :email)
   end
 end
