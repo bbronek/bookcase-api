@@ -236,7 +236,7 @@ RSpec.describe "API v1 books" do
     it "lists the validation failure of every attribute" do
       post "/api/v1/books", params: { serial_number: "12345", title: " ", author: "A\u0007" }, as: :json
 
-      expect(json[:errors]).to eq([
+      expect(response).to be_problem(:unprocessable_content, type: "validation-failed", errors: [
         { pointer: "#/serial_number", detail: "must be exactly six digits" },
         { pointer: "#/title", detail: "can't be blank" },
         { pointer: "#/author", detail: "must contain visible characters and no control characters" }
@@ -256,7 +256,7 @@ RSpec.describe "API v1 books" do
 
   describe "DELETE /api/v1/books/{serial_number}" do
     it "takes a withdrawn book off the list, keeps it readable, refuses to lend it and never reuses its serial number" do
-      create(:borrowing, :returned, book: create(:book, **dune))
+      returned = create(:borrowing, :returned, book: create(:book, **dune))
 
       2.times { delete "/api/v1/books/000001" }
       expect(response).to have_http_status(:no_content)
@@ -265,8 +265,12 @@ RSpec.describe "API v1 books" do
       expect(json).to eq([])
 
       get "/api/v1/books/000001"
-      expect(json).to include(status: "withdrawn", withdrawn_at: "2026-11-04T09:00:00.000Z", current_borrowing: nil)
-      expect(json[:borrowings].size).to eq(1)
+      reader = returned.reader
+      expect(json).to eq(dune.merge(status: "withdrawn", withdrawn_at: "2026-11-04T09:00:00.000Z", current_borrowing: nil, borrowings: [ {
+        id: returned.id, borrowed_at: returned.borrowed_at.utc.iso8601(3), due_on: returned.due_on.iso8601,
+        returned_at: returned.returned_at.utc.iso8601(3),
+        reader: { card_number: reader.card_number, full_name: reader.full_name, email: reader.email }
+      } ]))
 
       post "/api/v1/books/000001/borrowings", params: { card_number: create(:reader).card_number }, as: :json
       expect(response).to be_problem(:conflict, type: "book-withdrawn", detail: "Book 000001 was withdrawn from the catalog")
