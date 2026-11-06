@@ -13,6 +13,7 @@ Bookcase API: a small library API built with Ruby 4.0.9, Rails 8.1 API mode, Pos
 - `app/jobs`: thin wrappers for scheduling and delivery. Mailer templates are in `app/views`; dates and subjects use `config/locales/en.yml`.
 - `ProblemDetails` maps application errors to problem JSON. `ErrorsController` answers unmatched routes with 404. `lib/problem.rb` also supports framework exceptions and host authorization.
 - `spec/support/openapi`: schemas, a request-spec DSL and recorded examples. Use public rswag configuration, not formatter patches.
+- `public/docs/index.html`: Scalar mounted on `#app`. Never use the id `api-reference`: Scalar's standalone script auto-mounts a second, empty reference on it.
 - `db/migrate`: forward schema changes. `db/schema.rb` and model schema annotations are generated.
 - `spec`: `models` for validations and database guards, `domains` for commands and queries, `requests/api/v1` for endpoints and the OpenAPI document, `integration` for races and the reminder lifecycle, `jobs`, `mailers` and `docs`.
 
