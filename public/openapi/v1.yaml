@@ -14,7 +14,7 @@ info:
     - **Identifiers.** Books are addressed by their six-digit serial number and readers by their six-digit card
       number. Borrowings have a UUIDv7 id.
     - **Media types.** Requests with a body must be `application/json` and valid UTF-8; anything else is
-      `415` or `400`. Responses are `application/json`, errors are `application/problem+json`. Only bodies over
+      `415` or `400`. An unsupported method on an existing path answers `405` with an `Allow` header. Responses are `application/json`, errors are `application/problem+json`. Only bodies over
       10 MB are refused by the web server itself, with a plain-text `413`.
     - **Errors** follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457): `type`, `title`, `status`, `detail`
       and, for invalid attributes, `errors` with a JSON pointer per attribute.

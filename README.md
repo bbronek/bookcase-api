@@ -101,7 +101,7 @@ All paths start with `/api/v1`. Serial and card numbers are six-digit strings, l
 | POST | `/readers` | Register a reader |
 | GET | `/readers/{card_number}` | One reader |
 
-- **Status codes:** creates answer `201` with `Location`. Duplicates and unavailable books answer `409`, invalid attributes `422`, malformed requests `400`. A database that is down or busy answers `503` with `Retry-After`.
+- **Status codes:** creates answer `201` with `Location`. Duplicates and unavailable books answer `409`, invalid attributes `422`, malformed requests `400`, and an unsupported method on an existing path `405` with `Allow`. A database that is down or busy answers `503` with `Retry-After`.
 - **Errors:** one [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem format, each type explained at [/problems](http://localhost:3000/problems). The only exception is a body over 10 MB, which the web server refuses with a plain-text `413` before the application runs.
 - **Pagination:** `GET /books` takes `limit`, 50 by default and at most 100, and `after`; the `Link` header points to the next page.
 - **Health:** `/health` answers `200` while the database is reachable and `503` otherwise.

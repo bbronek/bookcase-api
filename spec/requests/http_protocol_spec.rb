@@ -58,10 +58,17 @@ RSpec.describe "HTTP protocol" do
   end
 
   describe "routing" do
-    it "answers 404 when a method has no route" do
-      patch "/api/v1/books/000001"
+    it "answers 405 with the allowed methods when the path exists but the method does not" do
+      {
+        -> { patch "/api/v1/books/000001" } => "GET, HEAD, DELETE",
+        -> { delete "/api/v1/books" } => "GET, HEAD, POST",
+        -> { get "/api/v1/books/000001/borrowings" } => "POST"
+      }.each do |send_request, allowed|
+        send_request.call
 
-      expect(response).to be_problem(:not_found, detail: "No route matches PATCH /api/v1/books/000001")
+        expect(response).to be_problem(:method_not_allowed, detail: "#{request.method} is not allowed on #{request.path}")
+        expect(response.headers["Allow"]).to eq(allowed)
+      end
     end
 
     it "answers 404 in the problem format for unknown paths and blank identifiers" do

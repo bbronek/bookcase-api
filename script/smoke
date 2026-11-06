@@ -38,7 +38,7 @@ curl --fail --silent "$base/api/v1/books/900001" | jq --exit-status '.status == 
 [[ $(status_of -X DELETE "$base/api/v1/books/900001") == 204 ]]
 [[ $(status_of -X DELETE "$base/api/v1/books/900001") == 204 ]]
 curl --fail --silent "$base/api/v1/books/900001" | jq --exit-status '.status == "withdrawn" and (.borrowings | length) == 1' > /dev/null
-[[ $(status_of "$base/api/v1/books/000001/borrowings") == 404 ]]
+[[ $(status_of "$base/api/v1/books/000001/borrowings") == 405 ]]
 
 step "the worker sends the reminder emails"
 docker compose exec -T web bin/rails runner '2.times { ScheduleDueRemindersJob.perform_later }' > /dev/null
