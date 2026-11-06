@@ -748,15 +748,13 @@ components:
           type: string
           minLength: 1
           maxLength: 255
-          description: NFC-normalized, whitespace collapsed, no control or invisible
-            formatting characters.
+          description: Trimmed, nonblank text without control characters.
           example: Dune
         author:
           type: string
           minLength: 1
           maxLength: 255
-          description: NFC-normalized, whitespace collapsed, no control or invisible
-            formatting characters.
+          description: Trimmed, nonblank text without control characters.
           example: Frank Herbert
     Book:
       type: object
@@ -777,15 +775,13 @@ components:
           type: string
           minLength: 1
           maxLength: 255
-          description: NFC-normalized, whitespace collapsed, no control or invisible
-            formatting characters.
+          description: Trimmed, nonblank text without control characters.
           example: Dune
         author:
           type: string
           minLength: 1
           maxLength: 255
-          description: NFC-normalized, whitespace collapsed, no control or invisible
-            formatting characters.
+          description: Trimmed, nonblank text without control characters.
           example: Frank Herbert
         status:
           type: string
@@ -825,15 +821,13 @@ components:
           type: string
           minLength: 1
           maxLength: 255
-          description: NFC-normalized, whitespace collapsed, no control or invisible
-            formatting characters.
+          description: Trimmed, nonblank text without control characters.
           example: Dune
         author:
           type: string
           minLength: 1
           maxLength: 255
-          description: NFC-normalized, whitespace collapsed, no control or invisible
-            formatting characters.
+          description: Trimmed, nonblank text without control characters.
           example: Frank Herbert
         status:
           type: string
@@ -946,8 +940,7 @@ components:
           type: string
           minLength: 1
           maxLength: 255
-          description: NFC-normalized, whitespace collapsed, no control or invisible
-            formatting characters.
+          description: Trimmed, nonblank text without control characters.
           example: Ada Lovelace
         email:
           type: string
@@ -970,8 +963,7 @@ components:
           type: string
           minLength: 1
           maxLength: 255
-          description: NFC-normalized, whitespace collapsed, no control or invisible
-            formatting characters.
+          description: Trimmed, nonblank text without control characters.
           example: Dune
     ReaderSummary:
       type: object
@@ -988,8 +980,7 @@ components:
           type: string
           minLength: 1
           maxLength: 255
-          description: NFC-normalized, whitespace collapsed, no control or invisible
-            formatting characters.
+          description: Trimmed, nonblank text without control characters.
           example: Ada Lovelace
     Problem:
       type: object

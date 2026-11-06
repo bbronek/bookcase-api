@@ -24,7 +24,7 @@ All resource routes now live under `/api/v1`; the earlier unversioned routes are
 | GET, POST | `/api/v1/readers` | List or register readers |
 | GET | `/api/v1/readers/{card_number}` | Read a reader |
 
-Book and reader numbers are six-digit strings. Lists use `limit` and `after`, with a next-page Link header. Books can be filtered by `status`. Errors use problem JSON; the reference documents response bodies and status codes.
+Book and reader numbers are six-digit strings. Text is trimmed without changing internal whitespace or Unicode; control characters are rejected. Email validation uses Ruby's standard pattern. Lists use `limit` and `after`, with a next-page Link header. Books can be filtered by `status`. Errors use problem JSON; the reference documents response bodies and status codes.
 
 ## Decisions
 

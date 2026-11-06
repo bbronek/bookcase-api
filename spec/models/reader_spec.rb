@@ -27,24 +27,24 @@ RSpec.describe Reader do
     end
 
     it "rejects malformed emails" do
-      [ "not-an-email", "two@@example.com", "a@b", ".ada@example.com", "ada..lovelace@example.com", "ada@-example.com" ].each do |email|
+      [ "not-an-email", "two@@example.com", "ada name@example.com", "ada@-example.com" ].each do |email|
         expect(build(:reader, email:)).not_to be_valid, email
       end
     end
 
-    it "rejects control and invisible formatting characters in the full name" do
-      reader = build(:reader, full_name: "Eve\u200B")
+    it "rejects control characters in the full name" do
+      reader = build(:reader, full_name: "Eve\u0007")
 
       expect(reader).not_to be_valid
-      expect(reader.errors[:full_name]).to eq([ "must be plain text, without control or invisible formatting characters" ])
+      expect(reader.errors[:full_name]).to eq([ "must not contain control characters" ])
     end
   end
 
   describe "normalization" do
-    it "trims and lower-cases the email and collapses whitespace in the name" do
+    it "trims the name and trims and lower-cases the email" do
       reader = described_class.new(full_name: " Ada   Lovelace ", email: "  Ada@Example.COM ")
 
-      expect(reader).to have_attributes(full_name: "Ada Lovelace", email: "ada@example.com")
+      expect(reader).to have_attributes(full_name: "Ada   Lovelace", email: "ada@example.com")
     end
   end
 

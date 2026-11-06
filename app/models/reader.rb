@@ -21,12 +21,6 @@
 #  readers_full_name_plain_text    (full_name::text ~ '[^[:space:]]'::text AND full_name::text !~ '[[:cntrl:]]'::text)
 #
 class Reader < ApplicationRecord
-  EMAIL_ATOM = %r{[a-z0-9!#$%&'*+/=?^_`{|}~-]+}
-  DOMAIN_LABEL = /[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?/
-  TOP_LEVEL_DOMAIN = /[a-z]{2,63}|xn--[a-z0-9-]{1,59}/
-  EMAIL = /\A#{EMAIL_ATOM}(?:\.#{EMAIL_ATOM})*@(?:#{DOMAIN_LABEL}\.)+(?:#{TOP_LEVEL_DOMAIN})\z/
-  private_constant :EMAIL_ATOM, :DOMAIN_LABEL, :TOP_LEVEL_DOMAIN
-
   has_many :borrowings, dependent: :restrict_with_exception, inverse_of: :reader
 
   normalizes :full_name, with: NORMALIZE_TEXT
@@ -34,7 +28,8 @@ class Reader < ApplicationRecord
 
   validates :card_number, presence: true, format: SIX_DIGITS_FORMAT
   validates :full_name, presence: true, length: { maximum: 255 }, format: PLAIN_TEXT_FORMAT
-  validates :email, presence: true, length: { maximum: 254 }, format: { with: EMAIL, allow_blank: true }
+  validates :email, presence: true, length: { maximum: 254 },
+    format: { with: URI::MailTo::EMAIL_REGEXP, allow_blank: true }
 
   def to_param = card_number
 end

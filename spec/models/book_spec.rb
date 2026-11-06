@@ -28,26 +28,22 @@ RSpec.describe Book do
       expect(build(:book, title: "Family \u{1F468}\u200D\u{1F469}\u200D\u{1F467}", author: "خانه\u200Cها \u200Fעברית")).to be_valid
     end
 
-    it "rejects control and invisible formatting characters in the title and author" do
-      [ "Dune\u0007", "Dune\u200B", "RTL\u202Eevil", "\uFEFFDune" ].each do |title|
+    it "rejects control characters in the title and author" do
+      [ "Dune\u0007", "Du\nne" ].each do |title|
         book = build(:book, title:, author: "Frank\u0000Herbert")
 
         expect(book).not_to be_valid
-        plain_text = "must be plain text, without control or invisible formatting characters"
+        plain_text = "must not contain control characters"
         expect(book.errors.to_hash).to eq(title: [ plain_text ], author: [ plain_text ])
       end
     end
   end
 
   describe "normalization" do
-    it "collapses whitespace in the title and author" do
-      book = described_class.new(title: "  The   Dispossessed ", author: "\tUrsula K.\nLe Guin ")
+    it "trims the title and author without changing their internal spacing" do
+      book = described_class.new(title: "  The   Dispossessed ", author: " Ursula K. Le Guin ")
 
-      expect(book).to have_attributes(title: "The Dispossessed", author: "Ursula K. Le Guin")
-    end
-
-    it "stores text in Unicode NFC, so the same title always compares equal" do
-      expect(described_class.new(title: "Cafe\u0301").title).to eq("Caf\u00E9")
+      expect(book).to have_attributes(title: "The   Dispossessed", author: "Ursula K. Le Guin")
     end
   end
 
