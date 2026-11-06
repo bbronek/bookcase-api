@@ -1,5 +1,3 @@
-# Solid Queue tables in the primary database (single-DB setup).
-# Generated from db/queue_schema.rb per the Solid Queue README; the schema file was removed afterwards.
 class CreateSolidQueueTables < ActiveRecord::Migration[8.1]
   def change
     create_table "solid_queue_blocked_executions", force: :cascade do |t|
@@ -85,7 +83,8 @@ class CreateSolidQueueTables < ActiveRecord::Migration[8.1]
       t.datetime "run_at", null: false
       t.datetime "created_at", null: false
       t.index [ "job_id" ], name: "index_solid_queue_recurring_executions_on_job_id", unique: true
-      t.index [ "task_key", "run_at" ], name: "index_solid_queue_recurring_executions_on_task_key_and_run_at", unique: true
+      t.index [ "task_key", "run_at" ], name: "index_solid_queue_recurring_executions_on_task_key_and_run_at",
+unique: true
     end
 
     create_table "solid_queue_recurring_tasks", force: :cascade do |t|

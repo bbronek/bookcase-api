@@ -1,0 +1,1238 @@
+---
+openapi: 3.1.0
+info:
+  title: Library API
+  version: 1.0.0
+  description: |
+    A JSON API for library staff: the catalog of books, registered readers, borrowing and returning,
+    and each book's borrowing history. Readers are emailed 3 days before a book is due and on the due date.
+
+    ## Conventions
+
+    - **Versioning.** Every endpoint lives under `/api/v1`. Additive changes (new endpoints, new fields) ship in v1;
+      a breaking change gets `/api/v2`. Clients must ignore fields they do not know.
+    - **Identifiers.** Books are addressed by their six-digit serial number and readers by their six-digit card
+      number. Borrowings have a UUIDv7 id.
+    - **Media types.** Requests with a body must be `application/json`; anything else is `415`.
+      Responses are `application/json`, errors are `application/problem+json`. Bodies over 1 MB answer `413`;
+      above 10 MB the web server refuses them before the application, without a problem document.
+    - **Errors** follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457): `type`, `title`, `status`, `detail`,
+      `instance`, the `request_id` (also in the `X-Request-Id` header) and, for invalid attributes, `errors`
+      with a JSON pointer per attribute.
+    - **Retries are safe.** Repeating a create with the same body answers `200` with the existing resource
+      and its path in `Content-Location`. A repeated borrow is recognized while the book is still out.
+      Repeating a return answers `200` with the returned borrowing, and repeating a delete answers `204`.
+      A create that conflicts with a different existing resource answers `409`.
+    - **Pagination.** Lists are ordered and paginated with a keyset cursor: `limit` (1 to 100, default 50) and
+      `after`. The next page, when there is one, is in the `Link: <...>; rel="next"` header.
+    - **Time.** Timestamps are UTC (RFC 3339). Due dates are calendar dates in the library's time zone,
+      Europe/Warsaw. A borrowing lasts 30 days.
+    - **Concurrency.** Simultaneous requests on the same book are serialized by a row lock or a unique index.
+      Identical requests get the same result, and conflicting ones get `409`. A request that waits more than
+      2 s for a lock, or runs a statement longer than 5 s, answers `503` with `Retry-After`.
+    - **Authentication** is out of scope for this version.
+tags:
+- name: Books
+  description: The catalog. Withdrawing a book keeps its borrowing history.
+- name: Borrowings
+  description: Lending a book to a reader and taking it back.
+- name: Readers
+  description: People with a library card.
+- name: Health
+  description: Liveness and readiness probes, outside the versioned API.
+paths:
+  "/api/v1/books":
+    get:
+      summary: List books
+      tags:
+      - Books
+      operationId: listBooks
+      description: Books in the catalog ordered by serial number, with each book's
+        status and current borrowing. `?status=withdrawn` lists withdrawn books instead.
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - available
+          - borrowed
+          - withdrawn
+        description: Only books in this status.
+      - name: limit
+        in: query
+        required: false
+        description: Page size.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      - name: after
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Cursor from the `Link: rel="next"` header of the previous page.'
+      responses:
+        '200':
+          description: A page of books
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+            Link:
+              schema:
+                type: string
+              required: false
+              description: '`<url>; rel="next"` when there is a next page.'
+          content:
+            application/json:
+              example:
+              - serial_number: '000001'
+                title: Dune
+                author: Frank Herbert
+                status: borrowed
+                withdrawn_at:
+                current_borrowing:
+                  id: '019a0000-0000-7000-8000-000000000001'
+                  reader:
+                    card_number: '100001'
+                    full_name: Ada Lovelace
+                  borrowed_at: '2026-11-02T09:00:00.000Z'
+                  due_on: '2026-12-02'
+                  returned_at:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/Book"
+        '400':
+          description: Unknown status or invalid page parameters
+          content:
+            application/problem+json:
+              example:
+                type: about:blank
+                title: Bad Request
+                status: 400
+                detail: 'status must be one of: available, borrowed, withdrawn'
+                instance: "/api/v1/books"
+                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
+              schema:
+                "$ref": "#/components/schemas/Problem"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        default:
+          "$ref": "#/components/responses/Unexpected"
+    post:
+      summary: Add a book
+      tags:
+      - Books
+      operationId: addBook
+      description: Adds a book to the catalog. Repeating the request with the same
+        attributes answers 200 with the existing book.
+      responses:
+        '200':
+          description: Already in the catalog with the same attributes
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+            Content-Location:
+              schema:
+                type: string
+                format: uri-reference
+              description: Path of the existing book.
+          content:
+            application/json:
+              example:
+                serial_number: '000001'
+                title: Dune
+                author: Frank Herbert
+                status: available
+                withdrawn_at:
+                current_borrowing:
+              schema:
+                "$ref": "#/components/schemas/Book"
+        '201':
+          description: Added
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+            Location:
+              schema:
+                type: string
+                format: uri-reference
+              description: Path of the new book.
+          content:
+            application/json:
+              example:
+                serial_number: '000001'
+                title: Dune
+                author: Frank Herbert
+                status: available
+                withdrawn_at:
+                current_borrowing:
+              schema:
+                "$ref": "#/components/schemas/Book"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '409':
+          description: The serial number belongs to a different book, or to a withdrawn
+            one
+          content:
+            application/problem+json:
+              example:
+                type: "/problems#serial-number-taken"
+                title: Serial number taken
+                status: 409
+                detail: Serial number 000001 belongs to a different book in the catalog
+                instance: "/api/v1/books"
+                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
+              schema:
+                "$ref": "#/components/schemas/Problem"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        '413':
+          "$ref": "#/components/responses/ContentTooLarge"
+        '415':
+          "$ref": "#/components/responses/UnsupportedMediaType"
+        '422':
+          description: Invalid attributes
+          content:
+            application/problem+json:
+              example:
+                type: "/problems#validation-failed"
+                title: Validation failed
+                status: 422
+                detail: The request has invalid attributes
+                instance: "/api/v1/books"
+                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
+                errors:
+                - pointer: "#/author"
+                  detail: must be a string
+              schema:
+                "$ref": "#/components/schemas/Problem"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        default:
+          "$ref": "#/components/responses/Unexpected"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/NewBook"
+        required: true
+  "/api/v1/books/{serial_number}":
+    parameters:
+    - name: serial_number
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[0-9]{6}$"
+        example: '000001'
+        description: Six digits, leading zeros included. Never reused.
+    get:
+      summary: Get a book with its borrowing history
+      tags:
+      - Books
+      operationId: getBook
+      description: Withdrawn books stay readable, with their history.
+      responses:
+        '200':
+          description: The book and its full history, newest first
+          content:
+            application/json:
+              example:
+                serial_number: '000001'
+                title: Dune
+                author: Frank Herbert
+                status: borrowed
+                withdrawn_at:
+                current_borrowing:
+                  id: '019a0000-0000-7000-8000-000000000001'
+                  reader:
+                    card_number: '100002'
+                    full_name: Alan Turing
+                  borrowed_at: '2026-11-01T11:00:00.000Z'
+                  due_on: '2026-12-01'
+                  returned_at:
+                borrowings:
+                - id: '019a0000-0000-7000-8000-000000000001'
+                  reader:
+                    card_number: '100002'
+                    full_name: Alan Turing
+                  borrowed_at: '2026-11-01T11:00:00.000Z'
+                  due_on: '2026-12-01'
+                  returned_at:
+                - id: '019a0000-0000-7000-8000-000000000002'
+                  reader:
+                    card_number: '100001'
+                    full_name: Ada Lovelace
+                  borrowed_at: '2026-09-01T08:00:00.000Z'
+                  due_on: '2026-10-01'
+                  returned_at: '2026-09-20T14:00:00.000Z'
+              schema:
+                "$ref": "#/components/schemas/BookDetail"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          description: No book with this serial number
+          content:
+            application/problem+json:
+              example:
+                type: about:blank
+                title: Not Found
+                status: 404
+                detail: Book not found
+                instance: "/api/v1/books/000001"
+                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
+              schema:
+                "$ref": "#/components/schemas/Problem"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        default:
+          "$ref": "#/components/responses/Unexpected"
+    delete:
+      summary: Withdraw a book
+      tags:
+      - Books
+      operationId: withdrawBook
+      description: Takes the book out of the catalog. Its history is kept and its
+        serial number is never reused. Withdrawing a withdrawn book answers 204 again.
+      responses:
+        '204':
+          description: Withdrawn
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          description: No book with this serial number
+          content:
+            application/problem+json:
+              example:
+                type: about:blank
+                title: Not Found
+                status: 404
+                detail: Book not found
+                instance: "/api/v1/books/000001"
+                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
+              schema:
+                "$ref": "#/components/schemas/Problem"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        '409':
+          description: The book is borrowed
+          content:
+            application/problem+json:
+              example:
+                type: "/problems#book-borrowed"
+                title: Book borrowed
+                status: 409
+                detail: Book 000001 is borrowed and cannot be withdrawn until it is
+                  returned
+                instance: "/api/v1/books/000001"
+                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
+              schema:
+                "$ref": "#/components/schemas/Problem"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        default:
+          "$ref": "#/components/responses/Unexpected"
+  "/api/v1/books/{serial_number}/borrowings":
+    parameters:
+    - name: serial_number
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[0-9]{6}$"
+        example: '000001'
+        description: Six digits, leading zeros included. Never reused.
+    post:
+      summary: Borrow a book
+      tags:
+      - Borrowings
+      operationId: borrowBook
+      description: |
+        Lends the book to the reader with this card number for 30 days. Repeating the request for the same reader while
+        the book is still out answers 200 with the existing borrowing; another reader gets 409 until the book is returned,
+        and a withdrawn book gets 409 for good.
+      responses:
+        '200':
+          description: The same reader already has the book
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+            Content-Location:
+              schema:
+                type: string
+                format: uri-reference
+              description: Path of the existing borrowing.
+          content:
+            application/json:
+              example:
+                id: '019a0000-0000-7000-8000-000000000001'
+                reader:
+                  card_number: '100001'
+                  full_name: Ada Lovelace
+                borrowed_at: '2026-11-03T09:00:00.000Z'
+                due_on: '2026-12-03'
+                returned_at:
+                book:
+                  serial_number: '000001'
+                  title: Dune
+              schema:
+                "$ref": "#/components/schemas/Borrowing"
+        '201':
+          description: Borrowed
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+            Location:
+              schema:
+                type: string
+                format: uri-reference
+              description: Path of the new borrowing.
+          content:
+            application/json:
+              example:
+                id: '019a0000-0000-7000-8000-000000000001'
+                reader:
+                  card_number: '100001'
+                  full_name: Ada Lovelace
+                borrowed_at: '2026-11-04T09:00:00.000Z'
+                due_on: '2026-12-04'
+                returned_at:
+                book:
+                  serial_number: '000001'
+                  title: Dune
+              schema:
+                "$ref": "#/components/schemas/Borrowing"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          description: No book with this serial number
+          content:
+            application/problem+json:
+              example:
+                type: about:blank
+                title: Not Found
+                status: 404
+                detail: Book not found
+                instance: "/api/v1/books/999999/borrowings"
+                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
+              schema:
+                "$ref": "#/components/schemas/Problem"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        '409':
+          description: Another reader has the book, or the book was withdrawn
+          content:
+            application/problem+json:
+              example:
+                type: "/problems#book-already-borrowed"
+                title: Book already borrowed
+                status: 409
+                detail: Book 000001 is already borrowed by another reader
+                instance: "/api/v1/books/000001/borrowings"
+                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
+              schema:
+                "$ref": "#/components/schemas/Problem"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        '413':
+          "$ref": "#/components/responses/ContentTooLarge"
+        '415':
+          "$ref": "#/components/responses/UnsupportedMediaType"
+        '422':
+          description: The card number is missing or matches no reader
+          content:
+            application/problem+json:
+              example:
+                type: "/problems#validation-failed"
+                title: Validation failed
+                status: 422
+                detail: The request has invalid attributes
+                instance: "/api/v1/books/000001/borrowings"
+                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
+                errors:
+                - pointer: "#/card_number"
+                  detail: does not match any reader
+              schema:
+                "$ref": "#/components/schemas/Problem"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        default:
+          "$ref": "#/components/responses/Unexpected"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/NewBorrowing"
+        required: true
+  "/api/v1/borrowings/{id}":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+        description: UUIDv7 generated by PostgreSQL.
+    get:
+      summary: Get a borrowing
+      tags:
+      - Borrowings
+      operationId: getBorrowing
+      responses:
+        '200':
+          description: The borrowing
+          content:
+            application/json:
+              example:
+                id: '019a0000-0000-7000-8000-000000000001'
+                reader:
+                  card_number: '100001'
+                  full_name: Ada Lovelace
+                borrowed_at: '2026-11-04T09:00:00.000Z'
+                due_on: '2026-12-04'
+                returned_at:
+                book:
+                  serial_number: '000001'
+                  title: Dune
+              schema:
+                "$ref": "#/components/schemas/Borrowing"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          description: No borrowing with this id
+          content:
+            application/problem+json:
+              example:
+                type: about:blank
+                title: Not Found
+                status: 404
+                detail: Borrowing not found
+                instance: "/api/v1/borrowings/019a0000-0000-7000-8000-000000000001"
+                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
+              schema:
+                "$ref": "#/components/schemas/Problem"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        default:
+          "$ref": "#/components/responses/Unexpected"
+  "/api/v1/borrowings/{id}/return":
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+        description: UUIDv7 generated by PostgreSQL.
+    post:
+      summary: Return a book
+      tags:
+      - Borrowings
+      operationId: returnBook
+      description: Closes the borrowing. Returning an already returned borrowing changes
+        nothing and answers 200 again.
+      responses:
+        '200':
+          description: Returned
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+            Content-Location:
+              schema:
+                type: string
+                format: uri-reference
+              description: Path of the borrowing.
+          content:
+            application/json:
+              example:
+                id: '019a0000-0000-7000-8000-000000000001'
+                reader:
+                  card_number: '100001'
+                  full_name: Ada Lovelace
+                borrowed_at: '2026-10-25T09:00:00.000Z'
+                due_on: '2026-11-24'
+                returned_at: '2026-11-04T09:00:00.000Z'
+                book:
+                  serial_number: '000001'
+                  title: Dune
+              schema:
+                "$ref": "#/components/schemas/Borrowing"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          description: No borrowing with this id
+          content:
+            application/problem+json:
+              example:
+                type: about:blank
+                title: Not Found
+                status: 404
+                detail: Borrowing not found
+                instance: "/api/v1/borrowings/019a0000-0000-7000-8000-000000000001/return"
+                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
+              schema:
+                "$ref": "#/components/schemas/Problem"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        default:
+          "$ref": "#/components/responses/Unexpected"
+  "/api/v1/readers":
+    get:
+      summary: List readers
+      tags:
+      - Readers
+      operationId: listReaders
+      description: Readers ordered by card number.
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        description: Page size.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      - name: after
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Cursor from the `Link: rel="next"` header of the previous page.'
+      responses:
+        '200':
+          description: A page of readers
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+            Link:
+              schema:
+                type: string
+              required: false
+              description: '`<url>; rel="next"` when there is a next page.'
+          content:
+            application/json:
+              example:
+              - card_number: '100001'
+                full_name: Ada Lovelace
+                email: ada@example.com
+              - card_number: '100002'
+                full_name: Alan Turing
+                email: alan@example.com
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/Reader"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        default:
+          "$ref": "#/components/responses/Unexpected"
+    post:
+      summary: Register a reader
+      tags:
+      - Readers
+      operationId: registerReader
+      description: Registers a reader. Repeating the request with the same attributes
+        answers 200 with the existing reader.
+      responses:
+        '200':
+          description: Already registered with the same attributes
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+            Content-Location:
+              schema:
+                type: string
+                format: uri-reference
+              description: Path of the existing reader.
+          content:
+            application/json:
+              example:
+                card_number: '100001'
+                full_name: Ada Lovelace
+                email: ada@example.com
+              schema:
+                "$ref": "#/components/schemas/Reader"
+        '201':
+          description: Registered
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+            Location:
+              schema:
+                type: string
+                format: uri-reference
+              description: Path of the new reader.
+          content:
+            application/json:
+              example:
+                card_number: '100001'
+                full_name: Ada Lovelace
+                email: ada@example.com
+              schema:
+                "$ref": "#/components/schemas/Reader"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '409':
+          description: The card number or email belongs to a different reader
+          content:
+            application/problem+json:
+              example:
+                type: "/problems#email-taken"
+                title: Email taken
+                status: 409
+                detail: This email belongs to a different reader
+                instance: "/api/v1/readers"
+                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
+              schema:
+                "$ref": "#/components/schemas/Problem"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        '413':
+          "$ref": "#/components/responses/ContentTooLarge"
+        '415':
+          "$ref": "#/components/responses/UnsupportedMediaType"
+        '422':
+          description: Invalid attributes
+          content:
+            application/problem+json:
+              example:
+                type: "/problems#validation-failed"
+                title: Validation failed
+                status: 422
+                detail: The request has invalid attributes
+                instance: "/api/v1/readers"
+                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
+                errors:
+                - pointer: "#/card_number"
+                  detail: must be exactly six digits
+                - pointer: "#/full_name"
+                  detail: can't be blank
+                - pointer: "#/email"
+                  detail: is invalid
+              schema:
+                "$ref": "#/components/schemas/Problem"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        default:
+          "$ref": "#/components/responses/Unexpected"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/Reader"
+        required: true
+  "/api/v1/readers/{card_number}":
+    parameters:
+    - name: card_number
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[0-9]{6}$"
+        example: '100001'
+        description: Six digits, leading zeros included.
+    get:
+      summary: Get a reader
+      tags:
+      - Readers
+      operationId: getReader
+      responses:
+        '200':
+          description: The reader
+          content:
+            application/json:
+              example:
+                card_number: '100001'
+                full_name: Ada Lovelace
+                email: ada@example.com
+              schema:
+                "$ref": "#/components/schemas/Reader"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '404':
+          description: No reader with this card number
+          content:
+            application/problem+json:
+              example:
+                type: about:blank
+                title: Not Found
+                status: 404
+                detail: Reader not found
+                instance: "/api/v1/readers/100001"
+                request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
+              schema:
+                "$ref": "#/components/schemas/Problem"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        default:
+          "$ref": "#/components/responses/Unexpected"
+  "/health/live":
+    get:
+      summary: Liveness
+      tags:
+      - Health
+      operationId: getLiveness
+      description: 200 while the process can serve requests. Checks no dependencies.
+      responses:
+        '200':
+          description: Alive
+          content:
+            application/json:
+              example:
+                status: ok
+              schema:
+                "$ref": "#/components/schemas/Liveness"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+  "/health/ready":
+    get:
+      summary: Readiness
+      tags:
+      - Health
+      operationId: getReadiness
+      description: 200 when every dependency answers, 503 otherwise.
+      responses:
+        '200':
+          description: Ready
+          content:
+            application/json:
+              example:
+                status: ok
+                uptime: 123.4
+                checks:
+                  database: ok
+              schema:
+                "$ref": "#/components/schemas/Readiness"
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+        '503':
+          description: A dependency is down
+          headers:
+            X-Request-Id:
+              "$ref": "#/components/headers/X-Request-Id"
+            Retry-After:
+              schema:
+                type: string
+              description: Seconds to wait before probing again.
+          content:
+            application/json:
+              example:
+                status: unavailable
+                uptime: 123.4
+                checks:
+                  database: error
+              schema:
+                "$ref": "#/components/schemas/Readiness"
+components:
+  schemas:
+    NewBook:
+      type: object
+      required:
+      - serial_number
+      - title
+      - author
+      properties:
+        serial_number:
+          type: string
+          pattern: "^[0-9]{6}$"
+          example: '000001'
+          description: Six digits, leading zeros included. Never reused.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: NFC-normalized, whitespace collapsed, no control or invisible
+            formatting characters.
+          example: Dune
+        author:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: NFC-normalized, whitespace collapsed, no control or invisible
+            formatting characters.
+          example: Frank Herbert
+    Book:
+      type: object
+      required:
+      - serial_number
+      - title
+      - author
+      - status
+      - withdrawn_at
+      - current_borrowing
+      properties:
+        serial_number:
+          type: string
+          pattern: "^[0-9]{6}$"
+          example: '000001'
+          description: Six digits, leading zeros included. Never reused.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: NFC-normalized, whitespace collapsed, no control or invisible
+            formatting characters.
+          example: Dune
+        author:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: NFC-normalized, whitespace collapsed, no control or invisible
+            formatting characters.
+          example: Frank Herbert
+        status:
+          type: string
+          enum:
+          - available
+          - borrowed
+          - withdrawn
+          description: 'Derived: withdrawn, else borrowed while a borrowing is open,
+            else available.'
+        withdrawn_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: When the book left the catalog; null while it is in the catalog.
+        current_borrowing:
+          oneOf:
+          - "$ref": "#/components/schemas/BookBorrowing"
+          - type: 'null'
+    BookDetail:
+      type: object
+      required:
+      - serial_number
+      - title
+      - author
+      - status
+      - withdrawn_at
+      - current_borrowing
+      - borrowings
+      properties:
+        serial_number:
+          type: string
+          pattern: "^[0-9]{6}$"
+          example: '000001'
+          description: Six digits, leading zeros included. Never reused.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: NFC-normalized, whitespace collapsed, no control or invisible
+            formatting characters.
+          example: Dune
+        author:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: NFC-normalized, whitespace collapsed, no control or invisible
+            formatting characters.
+          example: Frank Herbert
+        status:
+          type: string
+          enum:
+          - available
+          - borrowed
+          - withdrawn
+          description: 'Derived: withdrawn, else borrowed while a borrowing is open,
+            else available.'
+        withdrawn_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: When the book left the catalog; null while it is in the catalog.
+        current_borrowing:
+          oneOf:
+          - "$ref": "#/components/schemas/BookBorrowing"
+          - type: 'null'
+        borrowings:
+          type: array
+          items:
+            "$ref": "#/components/schemas/BookBorrowing"
+          description: Full borrowing history, newest first.
+    NewBorrowing:
+      type: object
+      required:
+      - card_number
+      properties:
+        card_number:
+          type: string
+          pattern: "^[0-9]{6}$"
+          example: '100001'
+          description: Six digits, leading zeros included.
+    BookBorrowing:
+      type: object
+      required:
+      - id
+      - reader
+      - borrowed_at
+      - due_on
+      - returned_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUIDv7 generated by PostgreSQL.
+        reader:
+          "$ref": "#/components/schemas/ReaderSummary"
+        borrowed_at:
+          type: string
+          format: date-time
+          description: UTC, RFC 3339 with milliseconds.
+        due_on:
+          type: string
+          format: date
+          description: Calendar date in Europe/Warsaw, 30 days after the borrow.
+        returned_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Null until the book is returned.
+      description: A borrowing as listed under its book.
+    Borrowing:
+      type: object
+      required:
+      - id
+      - reader
+      - borrowed_at
+      - due_on
+      - returned_at
+      - book
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUIDv7 generated by PostgreSQL.
+        reader:
+          "$ref": "#/components/schemas/ReaderSummary"
+        borrowed_at:
+          type: string
+          format: date-time
+          description: UTC, RFC 3339 with milliseconds.
+        due_on:
+          type: string
+          format: date
+          description: Calendar date in Europe/Warsaw, 30 days after the borrow.
+        returned_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+          description: Null until the book is returned.
+        book:
+          "$ref": "#/components/schemas/BookSummary"
+    Reader:
+      type: object
+      required:
+      - card_number
+      - full_name
+      - email
+      properties:
+        card_number:
+          type: string
+          pattern: "^[0-9]{6}$"
+          example: '100001'
+          description: Six digits, leading zeros included.
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: NFC-normalized, whitespace collapsed, no control or invisible
+            formatting characters.
+          example: Ada Lovelace
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          example: ada@example.com
+          description: Stored trimmed and lower-cased; unique.
+    BookSummary:
+      type: object
+      required:
+      - serial_number
+      - title
+      properties:
+        serial_number:
+          type: string
+          pattern: "^[0-9]{6}$"
+          example: '000001'
+          description: Six digits, leading zeros included. Never reused.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: NFC-normalized, whitespace collapsed, no control or invisible
+            formatting characters.
+          example: Dune
+    ReaderSummary:
+      type: object
+      required:
+      - card_number
+      - full_name
+      properties:
+        card_number:
+          type: string
+          pattern: "^[0-9]{6}$"
+          example: '100001'
+          description: Six digits, leading zeros included.
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: NFC-normalized, whitespace collapsed, no control or invisible
+            formatting characters.
+          example: Ada Lovelace
+    Problem:
+      type: object
+      required:
+      - type
+      - title
+      - status
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          example: "/problems#book-already-borrowed"
+          description: "`about:blank` for plain HTTP errors, otherwise a stable reference
+            documented at `/problems`."
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+          description: The request path.
+        request_id:
+          type: string
+          description: Same as the `X-Request-Id` response header.
+        errors:
+          type: array
+          description: Present when attributes are invalid.
+          items:
+            type: object
+            required:
+            - pointer
+            - detail
+            properties:
+              pointer:
+                type: string
+                example: "#/title"
+              detail:
+                type: string
+                example: can't be blank
+    Liveness:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - ok
+    Readiness:
+      type: object
+      required:
+      - status
+      - uptime
+      - checks
+      properties:
+        status:
+          type: string
+          enum:
+          - ok
+          - unavailable
+        uptime:
+          type: number
+          description: Seconds since the process booted.
+        checks:
+          type: object
+          required:
+          - database
+          properties:
+            database:
+              type: string
+              enum:
+              - ok
+              - error
+  responses:
+    BadRequest:
+      headers:
+        X-Request-Id:
+          "$ref": "#/components/headers/X-Request-Id"
+      content:
+        application/problem+json:
+          schema:
+            "$ref": "#/components/schemas/Problem"
+      description: 'Malformed request: invalid JSON, parameters or encoding'
+    ContentTooLarge:
+      headers:
+        X-Request-Id:
+          "$ref": "#/components/headers/X-Request-Id"
+      content:
+        application/problem+json:
+          schema:
+            "$ref": "#/components/schemas/Problem"
+      description: The body is larger than 1 MB
+    UnsupportedMediaType:
+      headers:
+        X-Request-Id:
+          "$ref": "#/components/headers/X-Request-Id"
+      content:
+        application/problem+json:
+          schema:
+            "$ref": "#/components/schemas/Problem"
+      description: The body is not `application/json`
+    Unexpected:
+      headers:
+        X-Request-Id:
+          "$ref": "#/components/headers/X-Request-Id"
+      content:
+        application/problem+json:
+          schema:
+            "$ref": "#/components/schemas/Problem"
+      description: "`500` for an unexpected failure, `503` with `Retry-After` while
+        the database is unavailable or a lock wait times out"
+  headers:
+    X-Request-Id:
+      description: Identifies the request in logs and in problem documents.
+      schema:
+        type: string

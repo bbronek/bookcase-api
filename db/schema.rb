@@ -12,46 +12,53 @@
 
 ActiveRecord::Schema[8.1].define(version: 2026_11_04_100400) do
   # These are extensions that must be enabled in order to support this database
+  enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
 
-  create_table "books", force: :cascade do |t|
+  create_table "books", id: :uuid, default: -> { "uuidv7()" }, force: :cascade do |t|
     t.string "serial_number", null: false
-    t.string "title", null: false
-    t.string "author", null: false
+    t.string "title", limit: 255, null: false
+    t.string "author", limit: 255, null: false
+    t.datetime "withdrawn_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["serial_number"], name: "index_books_on_serial_number", unique: true
+    t.check_constraint "author::text ~ '[^[:space:]]'::text AND author::text !~ '[[:cntrl:]]'::text", name: "books_author_plain_text"
     t.check_constraint "serial_number::text ~ '^[0-9]{6}$'::text", name: "books_serial_number_six_digits"
+    t.check_constraint "title::text ~ '[^[:space:]]'::text AND title::text !~ '[[:cntrl:]]'::text", name: "books_title_plain_text"
   end
 
-  create_table "borrowings", force: :cascade do |t|
-    t.bigint "book_id", null: false
-    t.bigint "reader_id", null: false
+  create_table "borrowings", id: :uuid, default: -> { "uuidv7()" }, force: :cascade do |t|
+    t.uuid "book_id", null: false
+    t.uuid "reader_id", null: false
     t.datetime "borrowed_at", null: false
     t.date "due_on", null: false
     t.datetime "returned_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["book_id"], name: "index_borrowings_on_book_id"
-    t.index ["book_id"], name: "index_borrowings_one_active_per_book", unique: true, where: "(returned_at IS NULL)"
-    t.index ["due_on"], name: "index_borrowings_active_by_due_on", where: "(returned_at IS NULL)"
+    t.index ["book_id", "borrowed_at", "id"], name: "index_borrowings_on_book_history", order: { borrowed_at: :desc, id: :desc }
+    t.index ["due_on"], name: "index_borrowings_on_due_on_active", where: "(returned_at IS NULL)"
     t.index ["reader_id"], name: "index_borrowings_on_reader_id"
+    t.check_constraint "due_on > (borrowed_at AT TIME ZONE 'Europe/Warsaw'::text)::date", name: "borrowings_due_after_borrowed"
     t.check_constraint "returned_at IS NULL OR returned_at >= borrowed_at", name: "borrowings_returned_after_borrowed"
+    t.exclusion_constraint "book_id WITH =, tstzrange(borrowed_at, returned_at) WITH &&", using: :gist, name: "borrowings_of_a_book_never_overlap"
   end
 
-  create_table "readers", force: :cascade do |t|
+  create_table "readers", id: :uuid, default: -> { "uuidv7()" }, force: :cascade do |t|
     t.string "card_number", null: false
-    t.string "full_name", null: false
-    t.string "email", null: false
+    t.string "full_name", limit: 255, null: false
+    t.string "email", limit: 254, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["card_number"], name: "index_readers_on_card_number", unique: true
     t.index ["email"], name: "index_readers_on_email", unique: true
     t.check_constraint "card_number::text ~ '^[0-9]{6}$'::text", name: "readers_card_number_six_digits"
+    t.check_constraint "email::text = lower(btrim(email::text))", name: "readers_email_normalized"
+    t.check_constraint "full_name::text ~ '[^[:space:]]'::text AND full_name::text !~ '[[:cntrl:]]'::text", name: "readers_full_name_plain_text"
   end
 
   create_table "reminders", force: :cascade do |t|
-    t.bigint "borrowing_id", null: false
+    t.uuid "borrowing_id", null: false
     t.string "kind", null: false
     t.datetime "sent_at"
     t.datetime "created_at", null: false

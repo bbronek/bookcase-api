@@ -1,7 +1,5 @@
 module JsonHelpers
-  def json
-    JSON.parse(response.body, symbolize_names: true)
-  end
+  def json = JSON.parse(response.body, symbolize_names: true)
 end
 
 RSpec.configure do |config|

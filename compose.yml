@@ -21,6 +21,7 @@ services:
     command: bin/rails db:prepare
     environment: &rails_env
       DB_HOST: db
+      DB_PORT: "5432"
       RAILS_LOG_TO_STDOUT: "1"
     depends_on:
       db:

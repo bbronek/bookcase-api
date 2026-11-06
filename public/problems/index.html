@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Library API problem types</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 46rem; margin: 3rem auto; padding: 0 1rem; line-height: 1.5; color: #1f2933; }
+    code { background: #f1f3f5; padding: 0 .25rem; border-radius: 3px; }
+    dt { font-weight: 600; margin-top: 1.25rem; }
+  </style>
+</head>
+<body>
+  <h1>Problem types</h1>
+  <p>Errors are <a href="https://www.rfc-editor.org/rfc/rfc9457">RFC 9457</a> problem documents. Plain HTTP errors use <code>about:blank</code>; the domain errors below have their own type. The full API reference is at <a href="/docs">/docs</a>.</p>
+  <dl>
+    <dt id="validation-failed">validation-failed <code>422</code></dt>
+    <dd>One or more attributes are invalid. <code>errors</code> lists each one with a JSON pointer, for example <code>#/title</code>.</dd>
+    <dt id="serial-number-taken">serial-number-taken <code>409</code></dt>
+    <dd>The serial number belongs to a different book. Repeating an add with identical attributes answers 200 instead.</dd>
+    <dt id="book-withdrawn">book-withdrawn <code>409</code></dt>
+    <dd>The book was withdrawn from the catalog. Lending it, or adding a book with its serial number, answers 409; the serial number is never given to another book.</dd>
+    <dt id="book-borrowed">book-borrowed <code>409</code></dt>
+    <dd>The book is borrowed, so it cannot be withdrawn until it is returned.</dd>
+    <dt id="book-already-borrowed">book-already-borrowed <code>409</code></dt>
+    <dd>Another reader has the book. The same reader repeating the borrow gets 200 with the existing borrowing.</dd>
+    <dt id="card-number-taken">card-number-taken <code>409</code></dt>
+    <dd>The card number belongs to a reader with different details.</dd>
+    <dt id="email-taken">email-taken <code>409</code></dt>
+    <dd>The email belongs to a different reader.</dd>
+  </dl>
+</body>
+</html>

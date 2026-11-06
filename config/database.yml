@@ -1,20 +1,27 @@
 default: &default
   adapter: postgresql
   encoding: unicode
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  max_connections: <%= [ ENV.fetch("RAILS_MAX_THREADS", 3).to_i, ENV.fetch("JOB_THREADS", 3).to_i + 2 ].max %>
+  connect_timeout: 2
+  variables:
+    statement_timeout: 5s
+    lock_timeout: 2s
+
+local: &local
+  <<: *default
   host: <%= ENV.fetch("DB_HOST", "localhost") %>
-  port: <%= ENV.fetch("DB_PORT", 5432) %>
+  port: <%= ENV.fetch("DB_PORT", 5433) %>
   username: <%= ENV.fetch("DB_USER", "postgres") %>
   password: <%= ENV.fetch("DB_PASSWORD", "postgres") %>
 
 development:
-  <<: *default
+  <<: *local
   database: library_api_development
 
 test:
-  <<: *default
+  <<: *local
   database: library_api_test
 
 production:
   <<: *default
-  database: library_api_production
+  url: <%= ENV.fetch("DATABASE_URL") if Rails.env.production? %>

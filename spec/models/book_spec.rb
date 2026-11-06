@@ -1,118 +1,124 @@
 require "rails_helper"
 
 RSpec.describe Book do
-  subject(:book) { build(:book) }
+  describe "validations" do
+    subject(:book) { build(:book) }
 
-  it { is_expected.to validate_presence_of(:title) }
-  it { is_expected.to validate_presence_of(:author) }
-  it { is_expected.to validate_presence_of(:serial_number) }
-  it { is_expected.to validate_uniqueness_of(:serial_number).ignoring_case_sensitivity }
+    it { is_expected.to validate_presence_of(:title) }
+    it { is_expected.to validate_presence_of(:author) }
+    it { is_expected.to validate_length_of(:title).is_at_most(255) }
+    it { is_expected.to validate_length_of(:author).is_at_most(255) }
 
-  it "accepts six-digit serial numbers, including ones with leading zeros" do
-    expect(build(:book, serial_number: "000042")).to be_valid
-  end
+    it "accepts six-digit serial numbers, leading zeros included" do
+      expect(build(:book, serial_number: "000042")).to be_valid
+    end
 
-  it "rejects serial numbers that are not exactly six digits" do
-    %w[ 12345 1234567 12345a ].each do |serial_number|
-      expect(build(:book, serial_number:)).not_to be_valid
+    it { is_expected.to validate_presence_of(:serial_number) }
+
+    it "rejects serial numbers that are not exactly six ASCII digits" do
+      [ "12345", "1234567", "12345a", "١٢٣٤٥٦" ].each do |serial_number|
+        book = build(:book, serial_number:)
+
+        expect(book).not_to be_valid
+        expect(book.errors[:serial_number]).to eq([ "must be exactly six digits" ])
+      end
+    end
+
+    it "accepts the joiners and direction marks that real titles and names need" do
+      expect(build(:book, title: "Family \u{1F468}\u200D\u{1F469}\u200D\u{1F467}", author: "خانه\u200Cها \u200Fעברית")).to be_valid
+    end
+
+    it "rejects control and invisible formatting characters in the title and author" do
+      [ "Dune\u0007", "Dune\u200B", "RTL\u202Eevil", "\uFEFFDune" ].each do |title|
+        book = build(:book, title:, author: "Frank\u0000Herbert")
+
+        expect(book).not_to be_valid
+        plain_text = "must be plain text, without control or invisible formatting characters"
+        expect(book.errors.to_hash).to eq(title: [ plain_text ], author: [ plain_text ])
+      end
     end
   end
 
-  it "enforces the serial number format in the database too" do
-    expect { Book.insert!({ serial_number: "1", title: "t", author: "a" }) }
-      .to raise_error(ActiveRecord::StatementInvalid, /books_serial_number_six_digits/)
+  describe "normalization" do
+    it "collapses whitespace in the title and author" do
+      book = described_class.new(title: "  The   Dispossessed ", author: "\tUrsula K.\nLe Guin ")
+
+      expect(book).to have_attributes(title: "The Dispossessed", author: "Ursula K. Le Guin")
+    end
+
+    it "stores text in Unicode NFC, so the same title always compares equal" do
+      expect(described_class.new(title: "Cafe\u0301").title).to eq("Caf\u00E9")
+    end
+  end
+
+  describe "database guards, with validations bypassed" do
+    let(:row) { { serial_number: "000001", title: "Dune", author: "Frank Herbert" } }
+
+    it "never reuses a serial number, not even after withdrawal" do
+      described_class.insert!(row.merge(withdrawn_at: 1.day.ago))
+
+      expect { described_class.insert!(row) }.to raise_error(ActiveRecord::RecordNotUnique, /index_books_on_serial_number/)
+    end
+
+    {
+      "a serial number that is not six digits" => [ { serial_number: "12345a" }, ActiveRecord::CheckViolation, /books_serial_number_six_digits/ ],
+      "a missing serial number" => [ { serial_number: nil }, ActiveRecord::NotNullViolation, /serial_number/ ],
+      "a missing title" => [ { title: nil }, ActiveRecord::NotNullViolation, /title/ ],
+      "a blank title" => [ { title: "   " }, ActiveRecord::CheckViolation, /books_title_plain_text/ ],
+      "control characters in the title" => [ { title: "Dune\u0007" }, ActiveRecord::CheckViolation, /books_title_plain_text/ ],
+      "a title longer than 255 characters" => [ { title: "x" * 256 }, ActiveRecord::ValueTooLong, /character varying\(255\)/ ],
+      "a missing author" => [ { author: nil }, ActiveRecord::NotNullViolation, /author/ ],
+      "a blank author" => [ { author: " " }, ActiveRecord::CheckViolation, /books_author_plain_text/ ],
+      "control characters in the author" => [ { author: "Frank\u0007Herbert" }, ActiveRecord::CheckViolation, /books_author_plain_text/ ],
+      "an author longer than 255 characters" => [ { author: "x" * 256 }, ActiveRecord::ValueTooLong, /character varying\(255\)/ ]
+    }.each do |violation, (attributes, error, message)|
+      it "rejects #{violation}" do
+        expect { described_class.insert!(row.merge(attributes)) }.to raise_error(error, message)
+      end
+    end
+  end
+
+  describe ".with_status" do
+    it "selects books by their derived status" do
+      available = create(:book)
+      borrowed = create(:borrowing).book
+      returned = create(:borrowing, :returned).book
+      withdrawn = create(:book, :withdrawn)
+
+      expect(described_class.with_status(nil)).to contain_exactly(available, borrowed, returned)
+      expect(described_class.with_status("available")).to contain_exactly(available, returned)
+      expect(described_class.with_status("borrowed")).to contain_exactly(borrowed)
+      expect(described_class.with_status("withdrawn")).to contain_exactly(withdrawn)
+    end
   end
 
   describe "#status" do
-    it "is available without an active borrowing and borrowed with one" do
+    it "is borrowed while a borrowing is active and available otherwise" do
       book = create(:book)
       expect(book.status).to eq("available")
 
-      create(:borrowing, book:)
+      borrowing = create(:borrowing, book:)
       expect(book.reload.status).to eq("borrowed")
 
-      book.return!
-      expect(book.status).to eq("available")
-    end
+      borrowing.update!(returned_at: Time.current)
+      expect(book.reload.status).to eq("available")
 
-    it "ignores returned borrowings" do
-      book = create(:borrowing, :returned).book
-      expect(book.reload).not_to be_borrowed
+      book.update!(withdrawn_at: Time.current)
+      expect(book.status).to eq("withdrawn")
     end
   end
 
-  describe "#borrow!" do
-    let(:book) { create(:book) }
-    let(:reader) { create(:reader) }
+  describe "#borrowings" do
+    it "lists the history newest first" do
+      book = create(:book)
+      older = create(:borrowing, :returned, book:)
+      newer = create(:borrowing, book:)
 
-    it "creates an active borrowing due 30 days later" do
-      now = Time.zone.parse("2026-11-04 15:30")
-      borrowing = book.borrow!(reader, now:)
-
-      expect(borrowing).to be_active
-      expect(borrowing.reader).to eq(reader)
-      expect(borrowing.borrowed_at).to eq(now)
-      expect(borrowing.due_on).to eq(Date.new(2026, 12, 4))
-      expect(book).to be_borrowed
-    end
-
-    it "refuses when the book is already borrowed" do
-      book.borrow!(reader)
-
-      expect { book.borrow!(create(:reader)) }.to raise_error(Book::InvalidTransition, /already borrowed/)
-      expect(book.borrowings.count).to eq(1)
-    end
-
-    it "relies on the database when two requests race for the same book" do
-      # Simulate a stale in-memory state: this instance believes the book is free while another request took it.
-      create(:borrowing, book:)
-      allow(book).to receive(:borrowed?).and_return(false)
-
-      expect { book.borrow!(reader) }.to raise_error(Book::InvalidTransition, /already borrowed/)
-      expect(book.borrowings.count).to eq(1)
-    end
-
-    it "allows borrowing again after a return" do
-      book.borrow!(reader)
-      book.return!
-
-      expect { book.borrow!(reader) }.to change { book.borrowings.count }.to(2)
+      expect(book.borrowings).to eq([ newer, older ])
     end
   end
 
-  describe "#return!" do
-    let(:book) { create(:book) }
-
-    it "closes the active borrowing" do
-      borrowing = book.borrow!(create(:reader), now: Time.zone.parse("2026-10-10 10:00"))
-      now = Time.zone.parse("2026-11-04 10:00")
-
-      expect(book.return!(now:)).to eq(borrowing)
-      expect(borrowing.reload.returned_at).to eq(now)
-      expect(book).not_to be_borrowed
-    end
-
-    it "refuses when the book is not borrowed" do
-      expect { book.return! }.to raise_error(Book::InvalidTransition, /not borrowed/)
-    end
-  end
-
-  describe "#destroy" do
-    it "is refused while the book is borrowed and keeps the history" do
-      book = create(:borrowing).book
-
-      expect(book.destroy).to be(false)
-      expect(book.errors[:base]).to include(a_string_matching(/cannot be deleted while borrowed/))
-      expect(Borrowing.count).to eq(1)
-    end
-
-    it "removes the book together with its borrowing history" do
-      book = create(:borrowing, :returned).book
-      create(:reminder, borrowing: book.borrowings.first)
-
-      expect { book.destroy! }.to change(Book, :count).by(-1)
-        .and change(Borrowing, :count).by(-1)
-        .and change(Reminder, :count).by(-1)
-    end
+  it "is addressed by its serial number" do
+    expect(build(:book, serial_number: "000042").to_param).to eq("000042")
   end
 end

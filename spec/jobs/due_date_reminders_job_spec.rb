@@ -4,7 +4,7 @@ RSpec.describe DueDateRemindersJob do
   let(:today) { Date.new(2026, 11, 4) }
 
   def borrowing_due_on(due_on, **attributes)
-    create(:borrowing, borrowed_at: (due_on - Borrowing::LOAN_PERIOD_DAYS).in_time_zone, due_on:, **attributes)
+    create(:borrowing, book: create(:book, title: "Dune"), borrowed_at: (due_on - Borrowing::PERIOD).in_time_zone, due_on:, **attributes)
   end
 
   def deliveries_to(borrowing)

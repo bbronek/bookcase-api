@@ -1,0 +1,37 @@
+module Api
+  module V1
+    class BooksController < BaseController
+      include KeysetPagination
+
+      def index
+        page = Catalog::BooksQuery.call(status: status_filter, **page_params)
+        render_page page, with: BookSerializer
+      end
+
+      def show
+        book = Book.includes(current_borrowing: :reader, borrowings: :reader)
+          .find_by!(serial_number: path_parameter(:serial_number))
+        render_resource book, with: BookDetailSerializer
+      end
+
+      def create
+        book = Catalog::AddBook.call(**body_attributes(:serial_number, :title, :author))
+        render_created_or_existing book, with: BookSerializer, location: api_v1_book_path(book)
+      end
+
+      def destroy
+        Catalog::WithdrawBook.call(serial_number: path_parameter(:serial_number))
+        head :no_content
+      end
+
+      private
+
+      def status_filter
+        status = query_parameter(:status)
+        return status if status.nil? || Book::STATUSES.include?(status)
+
+        raise ActionController::BadRequest, "status must be one of: #{Book::STATUSES.join(', ')}"
+      end
+    end
+  end
+end

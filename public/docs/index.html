@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Library API v1</title>
+</head>
+<body>
+  <div id="api-reference"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.77.0/dist/browser/standalone.js"
+          integrity="sha384-+7ESN8b9Ljg46TCYKedZUlhF/wfZbOt78aV/DtoU3anEElh8Q2eXsyhQ9W5lAZD4"
+          crossorigin="anonymous"></script>
+  <script>
+    Scalar.createApiReference("#api-reference", {
+      url: "/openapi/v1.yaml",
+      servers: [ { url: window.location.origin, description: "This server" } ],
+      showDeveloperTools: "never",
+      agent: { disabled: true },
+      orderSchemaPropertiesBy: "preserve",
+      orderRequiredPropertiesFirst: true
+    })
+  </script>
+</body>
+</html>

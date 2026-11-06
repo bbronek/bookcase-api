@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+RAILS_ENV=test bin/rails db:test:prepare
+RAILS_ENV=test RSWAG_DRY_RUN=0 bundle exec rake rswag:specs:swaggerize PATTERN="spec/requests/api/v1/**/*_spec.rb,spec/requests/health_spec.rb"

@@ -1,7 +1,7 @@
 class CreateReminders < ActiveRecord::Migration[8.1]
   def change
     create_table :reminders do |t|
-      t.references :borrowing, null: false, foreign_key: true, index: false
+      t.references :borrowing, type: :uuid, null: false, foreign_key: true, index: false
       t.string :kind, null: false
       t.datetime :sent_at
       t.timestamps

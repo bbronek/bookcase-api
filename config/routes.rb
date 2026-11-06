@@ -1,16 +1,24 @@
 Rails.application.routes.draw do
-  get "up" => "rails/health#show", as: :rails_health_check
+  root to: redirect("/docs", status: 302)
 
-  # JSON regardless of the Accept header; this API has no other representation.
-  scope defaults: { format: :json } do
-    # Books are addressed by their serial number, readers by their card number: the identifiers staff actually use.
-    resources :books, only: %i[ index show create destroy ], param: :serial_number do
-      scope module: :books do
-        resources :borrowings, only: :create # POST /books/:serial_number/borrowings  -> borrow
-        resource :return, only: :create      # POST /books/:serial_number/return      -> return
-      end
-    end
-
-    resources :readers, only: %i[ index create ], param: :card_number
+  scope :health, controller: :health, as: :health, format: false do
+    get :live
+    get :ready
   end
+
+  namespace :api, format: false do
+    namespace :v1 do
+      resources :books, param: :serial_number, only: %i[ index show create destroy ] do
+        resources :borrowings, only: :create
+      end
+
+      resources :borrowings, only: :show do
+        resource :return, only: :create, module: :borrowings
+      end
+
+      resources :readers, param: :card_number, only: %i[ index show create ]
+    end
+  end
+
+  match "*path", to: "errors#unmatched_route", via: :all, format: false
 end
