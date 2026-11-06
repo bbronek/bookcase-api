@@ -26,10 +26,15 @@ module Membership
       Reader.transaction(requires_new: true) { @reader.tap(&:save!) }
     rescue ActiveRecord::RecordInvalid => error
       raise unless error.record.errors.all? { |validation| validation.type == :taken }
-      raise CardNumberTaken, @reader.card_number if error.record.errors.of_kind?(:card_number, :taken)
 
-      raise EmailTaken
+      raise_identifier_taken
     rescue ActiveRecord::RecordNotUnique
+      raise_identifier_taken
+    end
+
+    private
+
+    def raise_identifier_taken
       raise CardNumberTaken, @reader.card_number if Reader.exists?(card_number: @reader.card_number)
 
       raise EmailTaken
