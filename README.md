@@ -142,7 +142,7 @@ spec/requests/api/v1/                    request specs that also generate the AP
 - A reader must be registered before borrowing, and is identified by a card number.
 - "Delete a book" means withdraw it: the book leaves the catalog but keeps its history, and its serial number is never reused. A borrowed book must be returned first.
 - "Update its status" means borrowing and returning. A book's status is derived from its borrowings, never set directly.
-- A borrowing lasts 30 calendar days in the library's time zone, Europe/Warsaw. Reminders go out between 09:00 and 21:00 local time.
+- A borrowing lasts 30 calendar days in the library's time zone, Europe/Warsaw. Reminders go out at 09:00 local time; hourly runs until 21:00 queue any still pending after a failure or outage.
 - Staff software is the only client, so authentication is left out, as the brief allows.
 
 ---
