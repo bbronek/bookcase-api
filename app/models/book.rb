@@ -17,8 +17,10 @@
 # Check Constraints
 #
 #  books_author_plain_text         (author::text ~ '[^[:space:]]'::text AND author::text !~ '[[:cntrl:]]'::text)
+#  books_author_trimmed            (author::text = btrim(author::text))
 #  books_serial_number_six_digits  (serial_number::text ~ '^[0-9]{6}$'::text)
 #  books_title_plain_text          (title::text ~ '[^[:space:]]'::text AND title::text !~ '[[:cntrl:]]'::text)
+#  books_title_trimmed             (title::text = btrim(title::text))
 #
 class Book < ApplicationRecord
   STATUSES = %w[ available borrowed withdrawn ].freeze

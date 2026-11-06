@@ -20,6 +20,7 @@
 #  readers_email_normalized        (email::text = lower(btrim(email::text)))
 #  readers_email_shape             (email::text ~ '^[^@[:space:]]+@[^@[:space:]]+$'::text AND email::text !~ '[[:cntrl:]]'::text)
 #  readers_full_name_plain_text    (full_name::text ~ '[^[:space:]]'::text AND full_name::text !~ '[[:cntrl:]]'::text)
+#  readers_full_name_trimmed       (full_name::text = btrim(full_name::text))
 #
 class Reader < ApplicationRecord
   has_many :borrowings, dependent: :restrict_with_exception, inverse_of: :reader

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_06_193000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_06_200000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -26,8 +26,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_193000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["serial_number"], name: "index_books_on_serial_number", unique: true
+    t.check_constraint "author::text = btrim(author::text)", name: "books_author_trimmed"
     t.check_constraint "author::text ~ '[^[:space:]]'::text AND author::text !~ '[[:cntrl:]]'::text", name: "books_author_plain_text"
     t.check_constraint "serial_number::text ~ '^[0-9]{6}$'::text", name: "books_serial_number_six_digits"
+    t.check_constraint "title::text = btrim(title::text)", name: "books_title_trimmed"
     t.check_constraint "title::text ~ '[^[:space:]]'::text AND title::text !~ '[[:cntrl:]]'::text", name: "books_title_plain_text"
   end
 
@@ -58,6 +60,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_193000) do
     t.check_constraint "card_number::text ~ '^[0-9]{6}$'::text", name: "readers_card_number_six_digits"
     t.check_constraint "email::text = lower(btrim(email::text))", name: "readers_email_normalized"
     t.check_constraint "email::text ~ '^[^@[:space:]]+@[^@[:space:]]+$'::text AND email::text !~ '[[:cntrl:]]'::text", name: "readers_email_shape"
+    t.check_constraint "full_name::text = btrim(full_name::text)", name: "readers_full_name_trimmed"
     t.check_constraint "full_name::text ~ '[^[:space:]]'::text AND full_name::text !~ '[[:cntrl:]]'::text", name: "readers_full_name_plain_text"
   end
 

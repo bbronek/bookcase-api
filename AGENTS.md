@@ -37,7 +37,7 @@ A change is complete when lint and the full coverage-gated suite pass, affected 
 
 ## Business and API rules
 
-- Serial numbers and card numbers are unique six-digit strings. Emails are trimmed, lower-cased and unique. Text is trimmed, nonblank, length-limited and rejects control characters. Use Ruby's built-in email regex.
+- Serial numbers and card numbers are unique six-digit strings. Emails are trimmed, lower-cased and unique. Text is trimmed, nonblank, length-limited and rejects control characters, in the model and in PostgreSQL. Use Ruby's built-in email regex.
 - Rails validates unique identifiers, one active borrowing per book, one reminder per borrowing/kind, required fields and date ordering. PostgreSQL backs these rules with unique indexes, foreign keys, NOT NULL and CHECK constraints. Each constraint has a spec bypassing validations. Historical interval overlap is not database-enforced.
 - Ruby's email regex validates full syntax; PostgreSQL enforces normalized, nonempty `local@domain` shape without whitespace or control characters. Do not duplicate the full email parser in SQL.
 - Status is derived from borrowings; never add a status column.

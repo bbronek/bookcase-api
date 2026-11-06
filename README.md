@@ -126,7 +126,7 @@ Email is not exactly-once: a crash between sending and recording success can dup
 
 The Compose project and local database names retain `library-api` / `library_api_*` to preserve existing volumes after the Bookcase rename. The simplification migration removes `failed_at` history and retries previously failed reminders within their delivery window; rollback cannot recover those timestamps and requires non-overlapping borrowing history.
 
-The email-shape migration rejects existing malformed addresses rather than rewriting or deleting them. Correct affected records before retrying it. Rails checks full email syntax; SQL checks basic `local@domain` shape and disallows whitespace and control characters.
+The email-shape and trimmed-text migrations reject existing malformed addresses and untrimmed titles, authors or names rather than rewriting them. Correct affected records before retrying them. Rails checks full email syntax; SQL checks basic `local@domain` shape and disallows whitespace and control characters.
 
 The Dockerfile also has a `production` target. It requires `SECRET_KEY_BASE`, `DATABASE_URL`, `APP_HOSTS`, `SMTP_ADDRESS` and `MAILER_FROM`; SMTP credentials and port are optional. Run `bin/rails db:prepare`, the web process and `bin/jobs`. TLS must terminate at a trusted proxy. This target is smoke-tested, not a complete deployment setup.
 

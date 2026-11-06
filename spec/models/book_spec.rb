@@ -59,6 +59,18 @@ RSpec.describe Book do
   describe "database guards, with validations bypassed" do
     let(:row) { { serial_number: "000001", title: "Dune", author: "Frank Herbert" } }
 
+    {
+      "title" => [ "' Dune '", /books_title_trimmed/ ],
+      "author" => [ "'Frank Herbert '", /books_author_trimmed/ ]
+    }.each do |column, (untrimmed, constraint)|
+      it "stores only a trimmed #{column}, so a write that skips normalization fails" do
+        book = create(:book)
+
+        expect { described_class.where(id: book.id).update_all("#{column} = #{untrimmed}") }
+          .to raise_error(ActiveRecord::CheckViolation, constraint)
+      end
+    end
+
     it "never reuses a serial number, not even after withdrawal" do
       described_class.insert!(row.merge(withdrawn_at: 1.day.ago))
 

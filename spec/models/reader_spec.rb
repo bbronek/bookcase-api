@@ -80,6 +80,13 @@ RSpec.describe Reader do
         .to raise_error(ActiveRecord::CheckViolation, /readers_email_normalized/)
     end
 
+    it "stores only a trimmed full name, so a write that skips normalization fails" do
+      reader = create(:reader)
+
+      expect { described_class.where(id: reader.id).update_all("full_name = ' Ada Lovelace'") }
+        .to raise_error(ActiveRecord::CheckViolation, /readers_full_name_trimmed/)
+    end
+
     {
       "a card number that is not six digits" => [ { card_number: "1" }, ActiveRecord::CheckViolation, /readers_card_number_six_digits/ ],
       "a missing card number" => [ { card_number: nil }, ActiveRecord::NotNullViolation, /card_number/ ],
