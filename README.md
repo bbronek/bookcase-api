@@ -25,7 +25,7 @@ A JSON API for library staff: keep a catalog of physical books, register readers
 docker compose up            # the first build takes a few minutes
 ```
 
-Open [localhost:3000](http://localhost:3000): it redirects to the interactive API docs. Compose starts PostgreSQL, migrates and seeds the database, and runs the web server and the job worker. If port 3000 is taken, use `PORT=3001 docker compose up` and that port below. `docker compose down -v` starts over with a fresh database.
+Open [localhost:3000](http://localhost:3000): it redirects to the interactive API docs. Compose starts PostgreSQL, migrates and seeds the database, and runs the web server and the job worker. If port 3000 is taken, pick another one: `PORT=3001 docker compose up`. `docker compose down -v` starts over with a fresh database.
 
 **Run locally**
 
