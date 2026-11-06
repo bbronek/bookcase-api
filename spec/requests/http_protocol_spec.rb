@@ -133,7 +133,7 @@ RSpec.describe "HTTP protocol" do
     it "answers 503 with Retry-After while the database is unavailable, slow or deadlocked" do
       allow(Rails.logger).to receive(:error)
 
-      ProblemDetails::UNAVAILABLE.each do |database_error|
+      ProblemDetails::DATABASE_UNAVAILABLE.each do |database_error|
         allow(ActiveRecord::Base.connection).to receive(:select_all).and_raise(database_error, "database unavailable")
 
         get "/api/v1/books"

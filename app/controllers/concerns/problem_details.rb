@@ -1,7 +1,7 @@
 module ProblemDetails
   extend ActiveSupport::Concern
 
-  UNAVAILABLE = [
+  DATABASE_UNAVAILABLE = [
     ActiveRecord::ConnectionNotEstablished, ActiveRecord::ConnectionTimeoutError,
     ActiveRecord::LockWaitTimeout, ActiveRecord::QueryCanceled, ActiveRecord::Deadlocked
   ].freeze
@@ -13,7 +13,7 @@ module ProblemDetails
     rescue_from ActiveRecord::RecordInvalid, with: :render_record_invalid
     rescue_from DomainError::Invalid, with: :render_invalid_attribute
     rescue_from DomainError::Conflict, with: :render_conflict
-    rescue_from(*UNAVAILABLE, with: :render_unavailable)
+    rescue_from(*DATABASE_UNAVAILABLE, with: :render_unavailable)
   end
 
   private

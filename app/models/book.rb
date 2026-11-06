@@ -28,7 +28,7 @@ class Book < ApplicationRecord
   has_many :borrowings, -> { newest_first }, dependent: :restrict_with_exception, inverse_of: :book
   has_one :current_borrowing, -> { active }, class_name: "Borrowing", dependent: nil, inverse_of: :book
 
-  normalizes :title, :author, with: NORMALIZE_TEXT
+  normalizes :title, :author, with: ->(text) { text.strip }
 
   validates :serial_number, presence: true, format: SIX_DIGITS_FORMAT, uniqueness: true
   validates :title, :author, presence: true, length: { maximum: 255 }, format: PLAIN_TEXT_FORMAT

@@ -7,14 +7,14 @@ module Notifications
     end
 
     def call
-      reminders = Reminder.kinds.keys.flat_map { |kind| pending_reminders(kind) }
+      reminders = Reminder.kinds.keys.flat_map { |kind| schedule(kind) }
       ActiveJob.perform_all_later(reminders.map { |reminder| DeliverReminderJob.new(reminder) })
       reminders
     end
 
     private
 
-    def pending_reminders(kind)
+    def schedule(kind)
       borrowing_ids = Borrowing.active.where(due_on: Reminder.due_dates(kind, today: @today)).pluck(:id)
       rows = borrowing_ids.map { |borrowing_id| { borrowing_id:, kind: } }
       Reminder.insert_all(rows, unique_by: %i[ borrowing_id kind ])
