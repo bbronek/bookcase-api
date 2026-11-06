@@ -19,11 +19,16 @@ A JSON API for library staff: keep a catalog of physical books, register readers
 
 **You need** Git and Docker with Compose v2. Ruby 4.0.9 is optional, for running the app and the tests outside Docker. The try-it commands use `curl` and `jq`.
 
-**Run with Docker**
+**Get the code**
 
 ```bash
 git clone https://github.com/bbronek/bookcase-api.git
 cd bookcase-api
+```
+
+**Run with Docker**
+
+```bash
 docker compose up
 ```
 
