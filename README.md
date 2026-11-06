@@ -13,7 +13,7 @@ Built as a take-home assignment for a Ruby on Rails Developer role.
 ![OpenAPI 3.1](https://img.shields.io/badge/OpenAPI-3.1-6BA539?logo=openapiinitiative&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)
 
-[Quick start](#quick-start) · [API](#api) · [Architecture](#architecture) · [Assumptions](#assumptions) · [Key decisions](#key-decisions--trade-offs) · [Testing](#testing-approach) · [Limitations](#known-limitations) · [With more time](#with-more-time) · [Notes](#notes)
+[Quick start](#quick-start) · [API](#api) · [Architecture](#architecture) · [Assumptions](#assumptions) · [Key decisions](#key-decisions--trade-offs) · [Testing](#testing-approach) · [Limitations](#known-limitations) · [Improvements](#ideas-for-improvements) · [Notes](#notes)
 
 ---
 
@@ -211,7 +211,7 @@ Left out on purpose: Redis-backed queues, pagination and soft-delete gems, resul
 
 ---
 
-## With more time
+## Ideas for improvements
 
 1. **Staff authentication and roles:** required before the API leaves a trusted network.
 2. **Titles and copies:** split a title from its physical copies, with authors in their own table, so a library can hold several copies of one book.
