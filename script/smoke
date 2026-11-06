@@ -29,12 +29,19 @@ curl --fail --silent "$base/api/v1/books" | jq --exit-status 'length == 5' > /de
 
 step "a book can be added, borrowed and returned"
 [[ $(status_of -X POST "$base/api/v1/books" -H 'Content-Type: application/json' -d '{"serial_number":"900001","title":"Smoke","author":"Test"}') == 201 ]]
+[[ $(status_of -X POST "$base/api/v1/books" -H 'Content-Type: application/json' -d '{"serial_number":"900001","title":"Smoke","author":"Test"}') == 409 ]]
 id=$(curl --fail --silent -X POST "$base/api/v1/books/900001/borrowings" -H 'Content-Type: application/json' -d '{"card_number":"100003"}' | jq --raw-output '.id')
+[[ $(status_of -X POST "$base/api/v1/books/900001/borrowings" -H 'Content-Type: application/json' -d '{"card_number":"100003"}') == 409 ]]
 [[ $(status_of -X POST "$base/api/v1/borrowings/$id/return") == 200 ]]
-[[ $(status_of "$base/api/v1/books/000001/borrowings") == 405 ]]
+[[ $(status_of -X POST "$base/api/v1/borrowings/$id/return") == 200 ]]
+curl --fail --silent "$base/api/v1/books/900001" | jq --exit-status '.status == "available" and (.borrowings | length) == 1 and .borrowings[0].reader.email == "grace@example.com" and .borrowings[0].returned_at != null' > /dev/null
+[[ $(status_of -X DELETE "$base/api/v1/books/900001") == 204 ]]
+[[ $(status_of -X DELETE "$base/api/v1/books/900001") == 204 ]]
+curl --fail --silent "$base/api/v1/books/900001" | jq --exit-status '.status == "withdrawn" and (.borrowings | length) == 1' > /dev/null
+[[ $(status_of "$base/api/v1/books/000001/borrowings") == 404 ]]
 
 step "the worker sends the reminder emails"
-docker compose exec -T web bin/rails runner 'ScheduleDueRemindersJob.perform_later' > /dev/null
+docker compose exec -T web bin/rails runner '2.times { ScheduleDueRemindersJob.perform_later }' > /dev/null
 for _ in $(seq 1 30); do
   sent=$(docker compose exec -T web sh -c 'ls tmp/mails 2> /dev/null | wc -l')
   [[ "$sent" -ge 2 ]] && break
@@ -44,6 +51,7 @@ done
 
 step "the test suite passes inside the development image"
 docker compose exec -T web sh -c 'bin/rails db:test:prepare && bundle exec rspec' > /dev/null
+docker compose exec -T web bin/rails runner 'abort "Unexpected reminder deliveries" unless Reminder.where.not(sent_at: nil).count == 2 && Dir.glob(Rails.root.join("tmp/mails/*")).sum { |path| File.read(path).scan(/^Message-ID:/i).size } == 2'
 
 step "the production image serves the API and runs the worker"
 docker build --quiet --target production --tag library-api:production . > /dev/null
