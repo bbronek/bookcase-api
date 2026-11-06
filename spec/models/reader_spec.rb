@@ -45,7 +45,7 @@ RSpec.describe Reader do
       reader = build(:reader, full_name: "Eve\u0007")
 
       expect(reader).not_to be_valid
-      expect(reader.errors[:full_name]).to eq([ "must not contain control characters" ])
+      expect(reader.errors[:full_name]).to eq([ "must contain visible characters and no control characters" ])
     end
   end
 

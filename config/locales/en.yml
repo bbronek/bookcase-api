@@ -6,7 +6,7 @@ en:
     errors:
       messages:
         six_digits: "must be exactly six digits"
-        plain_text: "must not contain control characters"
+        plain_text: "must contain visible characters and no control characters"
   reminder_mailer:
     due_soon:
       subject: "Reminder: \"%{title}\" is due back on %{due_on}"

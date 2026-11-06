@@ -37,12 +37,19 @@ RSpec.describe Book do
       expect(build(:book, title: "Family \u{1F468}\u200D\u{1F469}\u200D\u{1F467}", author: "خانه\u200Cها \u200Fעברית")).to be_valid
     end
 
+    it "rejects a title or author made only of invisible characters" do
+      book = build(:book, title: "\u200B\u2060", author: "\uFEFF")
+
+      expect(book).not_to be_valid
+      expect(book.errors.to_hash.keys).to eq(%i[ title author ])
+    end
+
     it "rejects control characters in the title and author" do
       [ "Dune\u0007", "Du\nne" ].each do |title|
         book = build(:book, title:, author: "Frank\u0000Herbert")
 
         expect(book).not_to be_valid
-        plain_text = "must not contain control characters"
+        plain_text = "must contain visible characters and no control characters"
         expect(book.errors.to_hash).to eq(title: [ plain_text ], author: [ plain_text ])
       end
     end
@@ -53,6 +60,10 @@ RSpec.describe Book do
       book = described_class.new(title: "  The   Dispossessed ", author: " Ursula K. Le Guin ")
 
       expect(book).to have_attributes(title: "The   Dispossessed", author: "Ursula K. Le Guin")
+    end
+
+    it "trims Unicode whitespace too, such as ideographic and paragraph spaces" do
+      expect(described_class.new(title: "\u3000Dune\u2029").title).to eq("Dune")
     end
   end
 

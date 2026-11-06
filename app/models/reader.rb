@@ -25,7 +25,7 @@
 class Reader < ApplicationRecord
   has_many :borrowings, dependent: :restrict_with_exception, inverse_of: :reader
 
-  normalizes :full_name, with: ->(full_name) { full_name.strip }
+  normalizes :full_name, with: ->(full_name) { full_name.gsub(SURROUNDING_WHITESPACE, "") }
   normalizes :email, with: ->(email) { email.strip.downcase }
 
   validates :card_number, presence: true, format: SIX_DIGITS_FORMAT, uniqueness: true

@@ -3,5 +3,7 @@ class ApplicationRecord < ActiveRecord::Base
 
   SIX_DIGITS = /\A\d{6}\z/
   SIX_DIGITS_FORMAT = { with: SIX_DIGITS, message: :six_digits, allow_blank: true }.freeze
-  PLAIN_TEXT_FORMAT = { without: /[[:cntrl:]]/, message: :plain_text }.freeze
+  SURROUNDING_WHITESPACE = /\A[[:space:]]+|[[:space:]]+\z/
+  VISIBLE_TEXT = /\A[^[:cntrl:]]*[\p{L}\p{N}\p{P}\p{S}][^[:cntrl:]]*\z/
+  PLAIN_TEXT_FORMAT = { with: VISIBLE_TEXT, message: :plain_text, allow_blank: true }.freeze
 end

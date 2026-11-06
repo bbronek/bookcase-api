@@ -243,7 +243,7 @@ RSpec.describe "API v1 books" do
       expect(json[:errors]).to eq([
         { pointer: "#/serial_number", detail: "must be exactly six digits" },
         { pointer: "#/title", detail: "can't be blank" },
-        { pointer: "#/author", detail: "must not contain control characters" }
+        { pointer: "#/author", detail: "must contain visible characters and no control characters" }
       ])
     end
   end

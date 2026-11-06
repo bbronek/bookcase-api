@@ -692,13 +692,15 @@ components:
           type: string
           minLength: 1
           maxLength: 255
-          description: Trimmed, nonblank text without control characters.
+          description: Trimmed, with at least one visible character and no control
+            characters.
           example: Dune
         author:
           type: string
           minLength: 1
           maxLength: 255
-          description: Trimmed, nonblank text without control characters.
+          description: Trimmed, with at least one visible character and no control
+            characters.
           example: Frank Herbert
     Book:
       type: object
@@ -719,13 +721,15 @@ components:
           type: string
           minLength: 1
           maxLength: 255
-          description: Trimmed, nonblank text without control characters.
+          description: Trimmed, with at least one visible character and no control
+            characters.
           example: Dune
         author:
           type: string
           minLength: 1
           maxLength: 255
-          description: Trimmed, nonblank text without control characters.
+          description: Trimmed, with at least one visible character and no control
+            characters.
           example: Frank Herbert
         status:
           type: string
@@ -765,13 +769,15 @@ components:
           type: string
           minLength: 1
           maxLength: 255
-          description: Trimmed, nonblank text without control characters.
+          description: Trimmed, with at least one visible character and no control
+            characters.
           example: Dune
         author:
           type: string
           minLength: 1
           maxLength: 255
-          description: Trimmed, nonblank text without control characters.
+          description: Trimmed, with at least one visible character and no control
+            characters.
           example: Frank Herbert
         status:
           type: string
@@ -884,7 +890,8 @@ components:
           type: string
           minLength: 1
           maxLength: 255
-          description: Trimmed, nonblank text without control characters.
+          description: Trimmed, with at least one visible character and no control
+            characters.
           example: Ada Lovelace
         email:
           type: string
@@ -907,7 +914,8 @@ components:
           type: string
           minLength: 1
           maxLength: 255
-          description: Trimmed, nonblank text without control characters.
+          description: Trimmed, with at least one visible character and no control
+            characters.
           example: Dune
     Problem:
       type: object
