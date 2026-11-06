@@ -34,23 +34,10 @@ RSpec.describe Notifications::DeliverReminder do
     expect(ActionMailer::Base.deliveries).to be_empty
   end
 
-  it "surfaces a rejected address and leaves the reminder pending" do
+  it "surfaces a refused delivery and leaves the reminder pending for the next run" do
     mail_server_replies(Net::SMTPFatalError, "550 5.1.1 <ada@example.com>: Recipient address rejected: User unknown")
-    expect { deliver }.to raise_error(Net::SMTPFatalError)
-    expect(reminder.reload).to be_pending
-  end
-
-  it "keeps the reminder pending when the mail server refuses for a reason it can fix, such as a rejected sender or relay" do
-    mail_server_replies(Net::SMTPFatalError, "550 5.7.1 Relaying denied")
 
     expect { deliver }.to raise_error(Net::SMTPFatalError)
-    expect(reminder.reload).to be_pending
-  end
-
-  it "keeps the reminder pending when delivery fails for a temporary reason" do
-    mail_server_replies(Net::SMTPServerBusy, "421 try again later")
-
-    expect { deliver }.to raise_error(Net::SMTPServerBusy)
     expect(reminder.reload).to be_pending
   end
 end

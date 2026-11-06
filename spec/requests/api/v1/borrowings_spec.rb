@@ -119,28 +119,11 @@ RSpec.describe "API v1 borrowings" do
   end
 
   describe "POST /api/v1/books/{serial_number}/borrowings" do
-    it "refuses a repeated borrow by the same reader" do
-      borrow_dune
-
-      post "/api/v1/books/000001/borrowings", params: { card_number: "100001" }, as: :json
-
-      expect(response).to be_problem(:conflict, type: "book-borrowed")
-      expect(Borrowing.count).to eq(1)
-    end
-
     it "requires a card number" do
       post "/api/v1/books/000001/borrowings", params: {}, as: :json
 
       expect(response).to be_problem(:unprocessable_content, type: "validation-failed",
                                                              errors: [ { pointer: "#/card_number", detail: "can't be blank" } ])
-    end
-
-    it "refuses to lend a withdrawn book" do
-      Catalog::WithdrawBook.call(serial_number: "000001")
-
-      post "/api/v1/books/000001/borrowings", params: { card_number: "100001" }, as: :json
-
-      expect(response).to be_problem(:conflict, type: "book-withdrawn", detail: "Book 000001 was withdrawn from the catalog")
     end
   end
 

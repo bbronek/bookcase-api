@@ -40,7 +40,7 @@ A change is complete when lint and the full coverage-gated suite pass, affected 
 ## Business and API rules
 
 - Serial numbers and card numbers are unique six-digit strings. Emails are trimmed, lower-cased and unique. Text is trimmed, length-limited, has a visible character and no control characters. The model trims all Unicode whitespace and requires a letter, digit, punctuation mark or symbol; PostgreSQL enforces the ASCII part, because its character classes depend on the server locale. Use Ruby's built-in email regex.
-- Rails validates unique identifiers, one active borrowing per book, one reminder per borrowing/kind, required fields and date ordering. PostgreSQL backs these rules with unique indexes, foreign keys, NOT NULL and CHECK constraints. Each constraint has a spec bypassing validations. Historical interval overlap is not database-enforced.
+- Rails validates unique identifiers, one active borrowing per book, one reminder per borrowing/kind, required fields and date ordering. PostgreSQL backs these rules with unique indexes, foreign keys, NOT NULL and CHECK constraints. Each CHECK, unique index, enum and column length has a spec bypassing validations; `database_consistency` in `bin/ci` proves every NOT NULL column and foreign key matches its validation, so those get no spec. Historical interval overlap is not database-enforced.
 - Ruby's email regex validates full syntax; PostgreSQL enforces normalized, nonempty `local@domain` shape without whitespace or control characters. Do not duplicate the full email parser in SQL.
 - Status is derived from borrowings; never add a status column.
 - Books are withdrawn, not destroyed. Catalog queries start from `Book.in_catalog` unless withdrawn books are requested. Withdrawn books remain readable, cannot be lent and retain their serial numbers.
@@ -58,7 +58,7 @@ A change is complete when lint and the full coverage-gated suite pass, affected 
 
 Use RSpec, FactoryBot and real PostgreSQL. Assert complete success bodies with `eq` and errors with `be_problem`; request specs use `problem_response`. Control time with `travel_to` or `freeze_time`. Use named factory traits. The only sleep in specs is the bounded database lock-wait poll.
 
-Stub edges such as mail transport, outages and unexpected crashes, not business behavior. Preserve the 100% application line and branch coverage gate, but judge tests by the behavior they prove. Delete tests for deliberately removed features.
+Stub edges such as mail transport, outages and unexpected crashes, not business behavior. Preserve the 100% application line and branch coverage gate, but judge tests by the behavior they prove. Prove each rule once, at the layer that owns it, plus one request spec for its HTTP mapping; do not repeat a model or command assertion in a request spec. Thin queries are covered by request specs. Delete tests for deliberately removed features.
 
 Keep security checks, database consistency, OpenAPI validation, Docker smoke tests and hooks. The consistency check verifies that unique indexes have matching Rails validators; UUIDv7 supplies time-ordered primary keys. No new dependency when Ruby, Rails or an installed gem already does the job simply.
 

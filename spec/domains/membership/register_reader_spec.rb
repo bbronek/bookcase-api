@@ -18,10 +18,11 @@ RSpec.describe Membership::RegisterReader do
     }
   end
 
-  it "refuses a duplicate even when its attributes are identical" do
+  it "refuses a taken card number, even when the attributes are identical" do
     register
 
-    expect { register(email: "ADA@example.com") }.to raise_error(Membership::RegisterReader::CardNumberTaken)
+    expect { register(email: "ADA@example.com") }
+      .to raise_error(Membership::RegisterReader::CardNumberTaken, "Card number 100001 is already registered")
     expect(Reader.count).to eq(1)
   end
 
@@ -31,12 +32,6 @@ RSpec.describe Membership::RegisterReader do
     expect { register(full_name: "") }.to raise_error(ActiveRecord::RecordInvalid) { |error|
       expect(error.record.errors.of_kind?(:full_name, :blank)).to be(true)
     }
-  end
-
-  it "refuses a card number that belongs to a different reader" do
-    register
-
-    expect { register(full_name: "Augusta Ada King") }.to raise_error(Membership::RegisterReader::CardNumberTaken, "Card number 100001 is already registered")
   end
 
   it "refuses an email that belongs to a different reader" do

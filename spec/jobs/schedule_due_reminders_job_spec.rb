@@ -7,12 +7,6 @@ RSpec.describe ScheduleDueRemindersJob do
   let!(:due_today) { create(:borrowing, :due_today) }
   let!(:due_soon) { create(:borrowing, :due_soon) }
 
-  it "schedules today's reminders and queues their delivery" do
-    expect { described_class.perform_now }.to have_enqueued_job(DeliverReminderJob).exactly(2).times
-
-    expect(Reminder.pluck(:borrowing_id, :kind)).to contain_exactly([ due_today.id, "due_today" ], [ due_soon.id, "due_soon" ])
-  end
-
   it "sends each email once, however many hourly runs there are" do
     perform_enqueued_jobs { 3.times { described_class.perform_now } }
 

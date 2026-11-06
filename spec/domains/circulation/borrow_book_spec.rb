@@ -63,11 +63,4 @@ RSpec.describe Circulation::BorrowBook do
     expect { borrow(serial_number: withdrawn.serial_number, card_number: " ") }.to raise_error(Catalog::BookWithdrawn)
     expect { borrow(serial_number: borrowed.serial_number, card_number: "999999") }.to raise_error(Circulation::BookBorrowed)
   end
-
-  it "refuses a withdrawn book and does not find unknown ones" do
-    withdrawn = create(:book, :withdrawn)
-
-    expect { borrow(serial_number: withdrawn.serial_number) }.to raise_error(Catalog::BookWithdrawn)
-    expect { borrow(serial_number: "999999") }.to raise_error(ActiveRecord::RecordNotFound)
-  end
 end

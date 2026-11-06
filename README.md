@@ -4,7 +4,7 @@ A JSON API for library staff: keep a catalog of physical books, register readers
 
 Built as a take-home assignment for a Ruby on Rails Developer role.
 
-**Status:** all required features done · 246 specs passing · 100% line and branch coverage · 0 RuboCop offenses
+**Status:** all required features done · 210 specs passing · 100% line and branch coverage · 0 RuboCop offenses
 
 ![Ruby 4.0.9](https://img.shields.io/badge/Ruby-4.0.9-CC342D?logo=ruby&logoColor=white)
 ![Rails 8.1](https://img.shields.io/badge/Rails-8.1_API-D30001?logo=rubyonrails&logoColor=white)
@@ -190,8 +190,8 @@ Left out on purpose: Redis-backed queues, pagination and soft-delete gems, resul
 
 ## Testing approach
 
-- **Model specs:** every validation, and every database constraint proven by writing invalid rows past Rails.
-- **Command and query specs:** the business rules, conflicts, idempotent return and withdrawal, and pagination.
+- **Model specs:** every validation, and every CHECK, unique and length constraint proven by writing invalid rows past Rails. `database_consistency` proves that NOT NULL columns and foreign keys match the validations.
+- **Command specs:** the business rules, conflicts, and idempotent return and withdrawal. Each rule is proven once, at the layer that owns it.
 - **Request specs:** the success and error responses of each endpoint, with full JSON bodies and query-count checks. They also generate the OpenAPI document.
 - **Integration specs:** two real database connections racing for one book, and the reminder lifecycle across several days.
 - **Jobs and mailers:** scheduling, retries, both email templates and their previews.

@@ -91,13 +91,7 @@ RSpec.describe Borrowing do
 
     {
       "a return before the borrow" => [ { returned_at: 11.days.ago }, ActiveRecord::CheckViolation, /borrowings_returned_after_borrowed/ ],
-      "a due date on or before the borrow date" => [ { due_on: 10.days.ago.to_date }, ActiveRecord::CheckViolation, /borrowings_due_after_borrowed/ ],
-      "a missing borrow time" => [ { borrowed_at: nil }, ActiveRecord::NotNullViolation, /borrowed_at/ ],
-      "a missing due date" => [ { due_on: nil }, ActiveRecord::NotNullViolation, /due_on/ ],
-      "a missing book" => [ { book_id: nil }, ActiveRecord::NotNullViolation, /book_id/ ],
-      "a missing reader" => [ { reader_id: nil }, ActiveRecord::NotNullViolation, /reader_id/ ],
-      "a book that does not exist" => [ { book_id: SecureRandom.uuid_v7 }, ActiveRecord::InvalidForeignKey, /books/ ],
-      "a reader that does not exist" => [ { reader_id: SecureRandom.uuid_v7 }, ActiveRecord::InvalidForeignKey, /readers/ ]
+      "a due date on or before the borrow date" => [ { due_on: 10.days.ago.to_date }, ActiveRecord::CheckViolation, /borrowings_due_after_borrowed/ ]
     }.each do |violation, (attributes, error, message)|
       it "rejects #{violation}" do
         expect { insert(**attributes) }.to raise_error(error, message)

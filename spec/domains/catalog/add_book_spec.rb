@@ -19,10 +19,10 @@ RSpec.describe Catalog::AddBook do
     expect(Book.count).to eq(0)
   end
 
-  it "refuses a duplicate even when its attributes are identical" do
+  it "refuses a taken serial number, even when the attributes are identical" do
     add
 
-    expect { add }.to raise_error(Catalog::AddBook::SerialNumberTaken)
+    expect { add }.to raise_error(Catalog::AddBook::SerialNumberTaken, "Serial number 000001 is already taken")
     expect(Book.count).to eq(1)
   end
 
@@ -32,17 +32,5 @@ RSpec.describe Catalog::AddBook do
     expect { add(title: "") }.to raise_error(ActiveRecord::RecordInvalid) { |error|
       expect(error.record.errors.of_kind?(:title, :blank)).to be(true)
     }
-  end
-
-  it "refuses a serial number that belongs to a different book" do
-    add
-
-    expect { add(title: "Dune Messiah") }.to raise_error(Catalog::AddBook::SerialNumberTaken, "Serial number 000001 is already taken")
-  end
-
-  it "never reuses the serial number of a withdrawn book" do
-    create(:book, :withdrawn, serial_number: "000001", title: "Dune", author: "Frank Herbert")
-
-    expect { add }.to raise_error(Catalog::AddBook::SerialNumberTaken)
   end
 end

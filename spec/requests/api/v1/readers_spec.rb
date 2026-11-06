@@ -97,14 +97,6 @@ RSpec.describe "API v1 readers" do
   end
 
   describe "POST /api/v1/readers" do
-    it "refuses a card number that belongs to a different reader" do
-      create(:reader, card_number: "100001", full_name: "Someone Else")
-
-      post "/api/v1/readers", params: { card_number: "100001", full_name: "Ada Lovelace", email: "ada@example.com" }, as: :json
-
-      expect(response).to be_problem(:conflict, type: "card-number-taken", detail: "Card number 100001 is already registered")
-    end
-
     it "refuses an identical registration" do
       create(:reader, **ada_json)
 

@@ -37,14 +37,6 @@ RSpec.describe Notifications::ScheduleDueReminders do
     expect(Reminder.count).to eq(0)
   end
 
-  it "does not create a due-soon reminder on the due date itself" do
-    borrowing = borrowing_due_on(today)
-
-    schedule
-
-    expect(Reminder.where(borrowing:).pluck(:kind)).to eq([ "due_today" ])
-  end
-
   it "keeps one reminder per borrowing and kind, and queues only the pending ones" do
     sent = borrowing_due_on(today + 1)
     pending = borrowing_due_on(today + 3)

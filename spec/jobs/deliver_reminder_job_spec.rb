@@ -5,17 +5,11 @@ RSpec.describe DeliverReminderJob do
 
   def mail_server_raises(error, reply) = allow(ActionMailer::Base).to receive(:deliver_mail).and_raise(error, reply)
 
-  it "delivers the reminder" do
-    described_class.perform_now(reminder)
-
-    expect(ActionMailer::Base.deliveries.map(&:to)).to eq([ [ reminder.borrowing.reader.email ] ])
-    expect(reminder.reload).to be_sent
-  end
-
   it "sends one email however often it runs" do
     2.times { described_class.perform_now(reminder) }
 
-    expect(ActionMailer::Base.deliveries.size).to eq(1)
+    expect(ActionMailer::Base.deliveries.map(&:to)).to eq([ [ reminder.borrowing.reader.email ] ])
+    expect(reminder.reload).to be_sent
   end
 
   it "retries a temporary mail failure with backoff and leaves the reminder pending" do

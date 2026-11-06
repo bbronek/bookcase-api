@@ -89,12 +89,9 @@ RSpec.describe Reader do
 
     {
       "a card number that is not six digits" => [ { card_number: "1" }, ActiveRecord::CheckViolation, /readers_card_number_six_digits/ ],
-      "a missing card number" => [ { card_number: nil }, ActiveRecord::NotNullViolation, /card_number/ ],
-      "a missing full name" => [ { full_name: nil }, ActiveRecord::NotNullViolation, /full_name/ ],
       "a blank full name" => [ { full_name: " " }, ActiveRecord::CheckViolation, /readers_full_name_plain_text/ ],
       "control characters in the full name" => [ { full_name: "Eve\u0007" }, ActiveRecord::CheckViolation, /readers_full_name_plain_text/ ],
       "a full name longer than 255 characters" => [ { full_name: "x" * 256 }, ActiveRecord::ValueTooLong, /character varying\(255\)/ ],
-      "a missing email" => [ { email: nil }, ActiveRecord::NotNullViolation, /email/ ],
       "a blank email" => [ { email: "" }, ActiveRecord::CheckViolation, /readers_email_shape/ ],
       "an email without an at sign" => [ { email: "not-an-email" }, ActiveRecord::CheckViolation, /readers_email_shape/ ],
       "an email with two at signs" => [ { email: "ada@@example.com" }, ActiveRecord::CheckViolation, /readers_email_shape/ ],
@@ -114,9 +111,5 @@ RSpec.describe Reader do
 
       expect { reader.delete }.to raise_error(ActiveRecord::InvalidForeignKey)
     end
-  end
-
-  it "is addressed by its card number" do
-    expect(build(:reader, card_number: "100042").to_param).to eq("100042")
   end
 end

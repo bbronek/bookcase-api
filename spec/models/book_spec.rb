@@ -90,12 +90,9 @@ RSpec.describe Book do
 
     {
       "a serial number that is not six digits" => [ { serial_number: "12345a" }, ActiveRecord::CheckViolation, /books_serial_number_six_digits/ ],
-      "a missing serial number" => [ { serial_number: nil }, ActiveRecord::NotNullViolation, /serial_number/ ],
-      "a missing title" => [ { title: nil }, ActiveRecord::NotNullViolation, /title/ ],
       "a blank title" => [ { title: "   " }, ActiveRecord::CheckViolation, /books_title_plain_text/ ],
       "control characters in the title" => [ { title: "Dune\u0007" }, ActiveRecord::CheckViolation, /books_title_plain_text/ ],
       "a title longer than 255 characters" => [ { title: "x" * 256 }, ActiveRecord::ValueTooLong, /character varying\(255\)/ ],
-      "a missing author" => [ { author: nil }, ActiveRecord::NotNullViolation, /author/ ],
       "a blank author" => [ { author: " " }, ActiveRecord::CheckViolation, /books_author_plain_text/ ],
       "control characters in the author" => [ { author: "Frank\u0007Herbert" }, ActiveRecord::CheckViolation, /books_author_plain_text/ ],
       "an author longer than 255 characters" => [ { author: "x" * 256 }, ActiveRecord::ValueTooLong, /character varying\(255\)/ ]
@@ -134,19 +131,5 @@ RSpec.describe Book do
       book.update!(withdrawn_at: Time.current)
       expect(book.status).to eq("withdrawn")
     end
-  end
-
-  describe "#borrowings" do
-    it "lists the history newest first" do
-      book = create(:book)
-      older = create(:borrowing, :returned, book:)
-      newer = create(:borrowing, book:)
-
-      expect(book.borrowings).to eq([ newer, older ])
-    end
-  end
-
-  it "is addressed by its serial number" do
-    expect(build(:book, serial_number: "000042").to_param).to eq("000042")
   end
 end

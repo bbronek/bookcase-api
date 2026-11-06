@@ -29,18 +29,6 @@ RSpec.describe Reminder do
     it "accepts only the kinds of the reminder_kind enum" do
       expect { insert(kind: "overdue") }.to raise_error(ActiveRecord::StatementInvalid, /invalid input value for enum reminder_kind/)
     end
-
-    it "rejects a borrowing that does not exist" do
-      expect { insert(borrowing_id: SecureRandom.uuid_v7) }.to raise_error(ActiveRecord::InvalidForeignKey)
-    end
-
-    it "rejects a missing borrowing" do
-      expect { insert(borrowing_id: nil) }.to raise_error(ActiveRecord::NotNullViolation, /borrowing_id/)
-    end
-
-    it "rejects a missing kind" do
-      expect { insert(kind: nil) }.to raise_error(ActiveRecord::NotNullViolation, /kind/)
-    end
   end
 
   describe ".due_dates" do
