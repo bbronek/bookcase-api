@@ -28,15 +28,16 @@ RSpec.describe "API v1 borrowings" do
       tags "Borrowings"
       operationId "borrowBook"
       description <<~TEXT
-        Lends the book to the reader with this card number for 30 days. An already borrowed book answers 409,
-        even for the same reader. A withdrawn book cannot be borrowed.
+        Lends the book to the reader with this card number. It is due back 30 days later, and the reader is emailed
+        3 days before the due date and on it. Keep the borrowing `id` to return the book. A borrowed or withdrawn
+        book answers 409, even for the reader who has it.
       TEXT
       produces "application/json"
       json_body :NewBorrowing
 
       let(:body) { { card_number: "100001" } }
 
-      response "201", "Borrowed" do
+      response "201", "Book lent" do
         schema OpenAPISchemas.ref(:Borrowing)
         header "Location", schema: { type: :string, format: "uri-reference" }, description: "Path of the new borrowing."
 
@@ -65,11 +66,12 @@ RSpec.describe "API v1 borrowings" do
   end
 
   path "/api/v1/borrowings/{id}" do
-    parameter name: :id, in: :path, required: true, schema: OpenAPISchemas::UUID
+    borrowing_id_parameter
 
     get "Get a borrowing" do
       tags "Borrowings"
       operationId "getBorrowing"
+      description "A borrowing with its book and reader."
       produces "application/json"
 
       response "200", "The borrowing" do
@@ -90,18 +92,18 @@ RSpec.describe "API v1 borrowings" do
   end
 
   path "/api/v1/borrowings/{id}/return" do
-    parameter name: :id, in: :path, required: true, schema: OpenAPISchemas::UUID
+    borrowing_id_parameter
 
     post "Return a book" do
       tags "Borrowings"
       operationId "returnBook"
-      description "Closes the borrowing. Returning an already returned borrowing changes nothing and answers 200 again."
+      description "Closes the borrowing and makes the book available again. Repeating a return changes nothing and answers 200 again."
       produces "application/json"
 
       let(:borrowing) { borrow_dune(borrowed_at: 10.days.ago) }
       let(:id) { borrowing.id }
 
-      response "200", "Returned" do
+      response "200", "Book returned" do
         schema OpenAPISchemas.ref(:Borrowing)
         header "Content-Location", schema: { type: :string, format: "uri-reference" }, description: "Path of the borrowing."
 

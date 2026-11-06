@@ -13,7 +13,7 @@ RSpec.describe "API v1 books" do
     get "List books" do
       tags "Books"
       operationId "listBooks"
-      description "Books in the catalog ordered by serial number, with each book's status and current borrowing."
+      description "Books in the catalog ordered by serial number, with each book's status and current borrowing. Withdrawn books are not listed."
       produces "application/json"
       page_parameters
 
@@ -52,7 +52,7 @@ RSpec.describe "API v1 books" do
 
       let(:body) { dune }
 
-      response "201", "Added" do
+      response "201", "Book added" do
         schema OpenAPISchemas.ref(:Book)
         header "Location", schema: { type: :string, format: "uri-reference" }, description: "Path of the new book."
 
@@ -83,7 +83,7 @@ RSpec.describe "API v1 books" do
     get "Get a book with its borrowing history" do
       tags "Books"
       operationId "getBook"
-      description "Withdrawn books stay readable, with their history."
+      description "The book, its current borrowing and every borrowing, newest first. Withdrawn books stay readable."
       produces "application/json"
 
       response "200", "The book and its full history, newest first" do
@@ -119,7 +119,7 @@ RSpec.describe "API v1 books" do
                   "Withdrawing a withdrawn book answers 204 again."
       produces "application/json"
 
-      response "204", "Withdrawn" do
+      response "204", "Book withdrawn" do
         before { create(:borrowing, :returned, book: create(:book, **dune)) }
 
         run_test! do

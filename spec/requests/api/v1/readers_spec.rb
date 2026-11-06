@@ -7,13 +7,13 @@ RSpec.describe "API v1 readers" do
     post "Register a reader" do
       tags "Readers"
       operationId "registerReader"
-      description "Registers a reader. A card number or email already registered answers 409."
+      description "Registers a reader. The email is stored trimmed and lower-cased. A card number or email already registered answers 409."
       produces "application/json"
       json_body :Reader
 
       let(:body) { { card_number: "100001", full_name: "Ada Lovelace", email: " Ada@Example.com " } }
 
-      response "201", "Registered" do
+      response "201", "Reader registered" do
         schema OpenAPISchemas.ref(:Reader)
         header "Location", schema: { type: :string, format: "uri-reference" }, description: "Path of the new reader."
 
@@ -46,6 +46,7 @@ RSpec.describe "API v1 readers" do
     get "Get a reader" do
       tags "Readers"
       operationId "getReader"
+      description "A registered reader, by card number."
       produces "application/json"
 
       let(:card_number) { "100001" }

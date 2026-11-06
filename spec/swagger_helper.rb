@@ -8,14 +8,14 @@ module SharedOpenAPIResponses
   def self.ref(name) = { "$ref" => "#/components/responses/#{name}" }
 
   COMPONENTS = {
-    BadRequest: problem("Malformed request: invalid JSON or UTF-8, a body that is not a JSON object, or invalid query values"),
+    BadRequest: problem("Malformed request, such as invalid JSON or UTF-8, a body that is not a JSON object, or an invalid query value"),
     UnsupportedMediaType: problem("The request body is not `application/json`"),
     ContentTooLarge: {
-      description: "The body is larger than 10 MB, so the web server refuses it before the application, in plain text",
+      description: "The body is over 10 MB; the web server refuses it in plain text before the application runs",
       content: { "text/plain" => { schema: { type: :string } } }
     },
     ServiceUnavailable: problem(
-      "The database is down, or a lock wait or statement exceeded its timeout",
+      "The database is down, or a lock wait or statement timed out",
       headers: { "Retry-After" => { schema: { type: :string }, description: "Seconds to wait before retrying." } }
     )
   }.freeze
@@ -48,32 +48,46 @@ RSpec.configure do |config|
         title: "Bookcase API",
         version: "1.0.0",
         description: <<~MARKDOWN
-          A JSON API for library staff: the catalog of books, registered readers, borrowing and returning,
-          and each book's borrowing history. Readers are emailed 3 days before a book is due and on the due date.
+          A JSON API for library staff: the catalog of books, registered readers, lending and returning, and each
+          book's borrowing history. Readers are emailed 3 days before a book is due and on the due date.
+
+          ## Typical flow
+
+          1. `POST /api/v1/readers` registers a reader.
+          2. `POST /api/v1/books` adds a book.
+          3. `POST /api/v1/books/{serial_number}/borrowings` lends it for 30 days and returns the borrowing `id`.
+          4. `POST /api/v1/borrowings/{id}/return` takes it back.
+          5. `GET /api/v1/books/{serial_number}` shows the book with its full history.
+
+          In development, the seeds provide books `000001` to `000005` and readers `100001` to `100003` to try
+          requests with **Test Request**; books `000004` and `000005` are available to lend.
 
           ## Conventions
 
-          - **Versioning.** Every endpoint lives under `/api/v1`. Additive changes (new endpoints, new fields) ship in v1;
-            a breaking change gets `/api/v2`. Clients must ignore fields they do not know.
-          - **Identifiers.** Books are addressed by their six-digit serial number and readers by their six-digit card
-            number. Borrowings have a UUIDv7 id.
-          - **Media types.** Requests with a body must be `application/json` and valid UTF-8; anything else is
-            `415` or `400`. An unsupported method on an existing path answers `405` with an `Allow` header. Responses are `application/json`, errors are `application/problem+json`. Only bodies over
-            10 MB are refused by the web server itself, with a plain-text `413`.
-          - **Errors** follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457): `type`, `title`, `status`, `detail`
-            and, for invalid attributes, `errors` with a JSON pointer per attribute.
-          - **Request ids.** Every response carries an `X-Request-Id` header, and production logs are tagged with it.
+          - **Versioning.** Every endpoint lives under `/api/v1`. Additive changes ship in v1; a breaking change
+            gets `/api/v2`. Clients must ignore fields they do not know.
+          - **Identifiers.** Books are addressed by their six-digit serial number, readers by their six-digit card
+            number and borrowings by a UUID.
+          - **Requests.** Bodies are JSON objects sent as `application/json` in UTF-8. Another media type answers
+            `415` and a malformed body `400`. The web server refuses bodies over 10 MB with a plain-text `413`.
+          - **Status codes.** `201` with `Location` for a create, `404` for an unknown resource, `405` with `Allow`
+            for an unsupported method, `409` for a conflict, `422` for invalid attributes, and `503` with
+            `Retry-After` while the database is down or busy.
+          - **Errors** are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem documents: `type`, `title`,
+            `status`, `detail` and, for invalid attributes, `errors` with a JSON pointer per attribute. Each `type`
+            is explained at [/problems](/problems).
+          - **Conflicts.** A taken serial number, card number or email answers `409`, even for an identical
+            request, and so does lending a book that is borrowed or withdrawn.
+          - **Safe to repeat.** Returning a returned borrowing answers `200` unchanged, and withdrawing a withdrawn
+            book answers `204` again.
+          - **Pagination.** The book list is ordered by serial number and paged with a keyset cursor: `limit`
+            (1 to 100, default 50) and `after`. The next page is in the `Link: <...>; rel="next"` header.
+          - **Time.** Timestamps are UTC, RFC 3339 with milliseconds. Due dates are calendar dates in the library's
+            time zone, Europe/Warsaw.
+          - **Concurrency.** Writes to one book are serialized by a row lock, so a book has at most one active
+            borrowing. A lock wait over 2 s or a statement over 5 s answers `503` with `Retry-After`.
+          - **Request ids.** Every response has an `X-Request-Id` header, and production logs are tagged with it.
             Quote it when reporting a problem.
-          - **Duplicates.** Creates answer `201` with `Location`. An existing serial number, card number or email,
-            or a book already borrowed by any reader, answers `409`, even for identical requests.
-            Repeating a return answers `200` unchanged, and repeating a withdrawal answers `204`.
-          - **Pagination.** The book list is ordered by serial number and paginated with a keyset cursor: `limit`
-            (1 to 100, default 50) and `after`. The next page, when there is one, is in the `Link: <...>; rel="next"` header.
-          - **Time.** Timestamps are UTC (RFC 3339). Due dates are calendar dates in the library's time zone,
-            Europe/Warsaw. A borrowing lasts 30 days.
-          - **Concurrency.** Simultaneous requests on the same book are serialized by a row lock or a unique index.
-            Only one active borrowing per book is allowed. A request that waits more than
-            2 s for a lock, or runs a statement longer than 5 s, answers `503` with `Retry-After`.
           - **Authentication** is out of scope for this version.
         MARKDOWN
       },

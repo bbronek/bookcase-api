@@ -3,9 +3,14 @@ module OpenAPIDSL
     parameter name:, in: :path, required: true, schema: OpenAPISchemas::SERIAL_NUMBER
   end
 
+  def borrowing_id_parameter
+    parameter name: :id, in: :path, required: true, schema: OpenAPISchemas::UUID,
+              description: "The borrowing `id` from the borrow response, or the book's `current_borrowing.id`."
+  end
+
   def page_parameters
     sizes = KeysetPagination::PAGE_SIZES
-    parameter name: :limit, in: :query, required: false, description: "Page size.",
+    parameter name: :limit, in: :query, required: false, description: "Books per page.",
               schema: { type: :integer, minimum: sizes.min, maximum: sizes.max, default: KeysetPagination::DEFAULT_PAGE_SIZE }
     parameter name: :after, in: :query, required: false, schema: { type: :string },
               description: "Cursor from the `Link: rel=\"next\"` header of the previous page."
