@@ -13,41 +13,44 @@ Built as a take-home assignment for a Ruby on Rails Developer role.
 ![OpenAPI 3.1](https://img.shields.io/badge/OpenAPI-3.1-6BA539?logo=openapiinitiative&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)
 
-[Quick start](#quick-start) · [API](#api) · [Assumptions](#assumptions) · [Key decisions](#key-decisions--trade-offs) · [Where to look](#where-to-look) · [Testing](#testing-approach) · [Limitations](#known-limitations) · [With more time](#with-more-time) · [Notes](#notes)
+[Quick start](#quick-start) · [API](#api) · [Architecture](#architecture) · [Assumptions](#assumptions) · [Key decisions](#key-decisions--trade-offs) · [Testing](#testing-approach) · [Limitations](#known-limitations) · [With more time](#with-more-time) · [Notes](#notes)
 
 ---
 
 ## Quick start
 
-**Requirements:** Ruby 4.0.9 and PostgreSQL 18, or just Docker with Compose v2.
+**You need** Docker with Compose v2. Ruby 4.0.9 is optional, for running the app and the tests outside Docker. The try-it commands use `curl` and `jq`.
+
+**Run with Docker**
 
 ```bash
-# Option A: Docker
-docker compose up
-# → http://localhost:3000, the interactive API reference
-
-# Option B: local
-docker compose up -d db     # PostgreSQL on 127.0.0.1:5433
-bin/setup --skip-server     # gems, git hooks, database and seeds
-bin/rails server
-bin/jobs                    # in a second terminal, for the reminder emails
+docker compose up            # the first build takes a few minutes
 ```
 
-If port 3000 is taken, run `PORT=3001 docker compose up`.
+Open [localhost:3000](http://localhost:3000): it redirects to the interactive API docs. Compose starts PostgreSQL, migrates and seeds the database, and runs the web server and the job worker. If port 3000 is taken, use `PORT=3001 docker compose up` and that port below. `docker compose down -v` starts over with a fresh database.
 
-**Run tests**
+**Run locally**
 
 ```bash
-bundle exec rspec
+docker compose up -d db      # PostgreSQL 18 on 127.0.0.1:5433
+bin/setup --skip-server      # gems, git hooks, database and seeds
+bin/rails server             # http://localhost:3000
+bin/jobs                     # in a second terminal, for the reminder emails
+```
+
+**Run the tests**
+
+```bash
+bundle exec rspec            # needs the database from "Run locally"
 bin/rubocop
-bin/ci                      # every CI check: lint, security, database, specs and docs
+bin/ci                       # every CI check: lint, security, database, specs and docs
 ```
 
 Without a local Ruby, the suite runs inside the container: `docker compose exec web sh -c 'bin/rails db:test:prepare && bundle exec rspec'`.
 
 **Try it**
 
-The seeds add five books (`000001` to `000005`) and three readers (`100001` to `100003`). Books `000001` and `000002` are due in three days and today, so the reminders can be tried at once. Book `000003` has a borrowing history. A full borrowing, with `jq` reading the id:
+The seeds add five books (`000001` to `000005`) and three readers (`100001` to `100003`). Books `000001` and `000002` are due in three days and today, so the reminders can be tried at once. Book `000003` has a borrowing history. A full borrowing:
 
 ```bash
 api=http://localhost:3000/api/v1
@@ -75,8 +78,6 @@ docker compose exec web bin/rails runner 'ScheduleDueRemindersJob.perform_later'
 sleep 5; docker compose exec web sh -c 'cat tmp/mails/*'
 ```
 
-Development emails are written to files. Templates are previewed at [/rails/mailers](http://localhost:3000/rails/mailers).
-
 ---
 
 ## API
@@ -95,9 +96,45 @@ All paths start with `/api/v1`. Serial and card numbers are six-digit strings, l
 | GET, POST | `/readers` | List or register readers |
 | GET | `/readers/{card_number}` | One reader |
 
-Lists take `limit`, 50 by default and at most 100, and `after`; the `Link` header points to the next page. Creates answer `201` with `Location`. Duplicates and unavailable books answer `409`, invalid attributes `422` and malformed requests `400`. Errors use the [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem format, with each type explained at [/problems](http://localhost:3000/problems). `/health/live` and `/health/ready` serve Docker and orchestrators.
+- **Status codes:** creates answer `201` with `Location`. Duplicates and unavailable books answer `409`, invalid attributes `422`, malformed requests `400`.
+- **Errors:** one [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem format for every error, each type explained at [/problems](http://localhost:3000/problems).
+- **Pagination:** lists take `limit`, 50 by default and at most 100, and `after`; the `Link` header points to the next page.
+- **Health:** `/health/live` checks the process and `/health/ready` the database too.
 
-The full contract, with examples and live calls, is at [/docs](http://localhost:3000/docs). It is generated from the request specs into [`public/openapi/v1.yaml`](public/openapi/v1.yaml), and CI fails when the committed file is out of date.
+**Documentation**
+
+| Where | What |
+|---|---|
+| [/docs](http://localhost:3000/docs) | Interactive reference with examples; every endpoint can be called from the page |
+| [`public/openapi/v1.yaml`](public/openapi/v1.yaml) | The OpenAPI 3.1 contract, generated from the request specs; CI fails when it is out of date |
+| [/problems](http://localhost:3000/problems) | Every error type the API returns |
+| [/rails/mailers](http://localhost:3000/rails/mailers) | Previews of both reminder emails, in text and HTML |
+| [docs/diagrams.md](docs/diagrams.md) | The services, a request through the code, the data model, the book states and the reminder pipeline |
+
+---
+
+## Architecture
+
+One Rails application in API mode, one PostgreSQL database and one Solid Queue worker, all built from one Docker image. There is no Redis: jobs and their schedule live in PostgreSQL.
+
+```
+request → app/controllers/api/v1    check the request shape, call one command or query
+        → app/domains                commands change state under row locks; queries page through lists
+        → app/models + PostgreSQL    validations, and the constraints that back them
+        → app/serializers/api/v1     the JSON response
+
+errors → ProblemDetails in controllers, lib/problem.rb before them → one problem+json format
+
+hourly ScheduleDueRemindersJob → one DeliverReminderJob per pending reminder → ReminderMailer
+```
+
+The business rules live in four areas under `app/domains`: catalog, circulation, membership and notifications. Start reading here:
+
+```
+app/domains/circulation/borrow_book.rb   the lock, the rules and the errors of a borrowing
+spec/integration/concurrency_spec.rb     two staff members racing for one book
+spec/requests/api/v1/                    request specs that also generate the API docs
+```
 
 ---
 
@@ -126,6 +163,7 @@ The full contract, with examples and live calls, is at [/docs](http://localhost:
 | Reminders as rows, sent by an hourly job | Running again never sends twice, and a missed run catches up | Jobs scheduled at borrow time, lost if one fails |
 | Solid Queue on PostgreSQL | Jobs and the schedule live in the database the app already has | Sidekiq, which needs Redis |
 | OpenAPI generated from request specs | The docs cannot drift from the behaviour | A hand-written YAML file |
+| Everything under `/api/v1` | A breaking change gets `/api/v2` while v1 keeps working | Unversioned routes |
 
 <details>
 <summary>Why these gems</summary>
@@ -147,21 +185,6 @@ The full contract, with examples and live calls, is at [/docs](http://localhost:
 Left out on purpose: Redis-backed queues, pagination and soft-delete gems, result-object libraries and parallel test runners. The app needs none of them at this size, and the suite runs in seconds.
 
 </details>
-
----
-
-## Where to look
-
-```
-app/domains/circulation/borrow_book.rb   ← start here: the lock, the rules and the errors of a borrowing
-app/domains/                             ← commands and queries by area: catalog, circulation, membership, notifications
-app/controllers/api/v1/                  ← thin JSON controllers
-app/models/ and db/migrate/              ← validations, and the constraints that back them
-spec/integration/concurrency_spec.rb     ← two staff members racing for one book
-spec/requests/api/v1/                    ← request specs that also generate the API docs
-```
-
-[docs/diagrams.md](docs/diagrams.md) draws the services, a request's path through the code, the data model, the book states and the reminder pipeline.
 
 ---
 
