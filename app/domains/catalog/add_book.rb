@@ -16,6 +16,10 @@ module Catalog
 
     def call
       Book.transaction(requires_new: true) { @book.tap(&:save!) }
+    rescue ActiveRecord::RecordInvalid => error
+      raise unless error.record.errors.all? { |validation| validation.type == :taken }
+
+      raise SerialNumberTaken, @book.serial_number
     rescue ActiveRecord::RecordNotUnique
       raise SerialNumberTaken, @book.serial_number
     end

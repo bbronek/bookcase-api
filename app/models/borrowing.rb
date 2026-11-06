@@ -36,7 +36,10 @@ class Borrowing < ApplicationRecord
   has_many :reminders, dependent: :restrict_with_exception, inverse_of: :borrowing
 
   validates :borrowed_at, :due_on, presence: true
+  validates :due_on, comparison: { greater_than: ->(borrowing) { borrowing.borrowed_at.in_time_zone.to_date } },
+    if: :borrowed_at?, allow_nil: true
   validates :returned_at, comparison: { greater_than_or_equal_to: :borrowed_at }, allow_nil: true
+  validates :book_id, uniqueness: { conditions: -> { active } }, unless: :returned?
 
   scope :active, -> { where(returned_at: nil) }
   scope :newest_first, -> { order(borrowed_at: :desc, id: :desc) }

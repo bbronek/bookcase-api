@@ -2,6 +2,38 @@ require "rails_helper"
 
 RSpec.describe Borrowing do
   describe "validations" do
+    subject(:borrowing) { build(:borrowing) }
+
+    it { is_expected.to validate_presence_of(:borrowed_at) }
+    it { is_expected.to validate_presence_of(:due_on) }
+    it { is_expected.to belong_to(:book).required }
+    it { is_expected.to belong_to(:reader).required }
+
+    it "requires a due date after the library-local borrowing date" do
+      borrowing = build(:borrowing, borrowed_at: Time.utc(2026, 11, 4, 23, 30), due_on: Date.new(2026, 11, 5))
+
+      expect(borrowing).not_to be_valid
+      expect(borrowing.errors[:due_on]).to eq([ "must be greater than 2026-11-05" ])
+
+      borrowing.due_on = Date.new(2026, 11, 6)
+      expect(borrowing).to be_valid
+    end
+
+    it "rejects a second active borrowing but allows returned history" do
+      active = create(:borrowing)
+      duplicate = build(:borrowing, book: active.book)
+      returned = create(:borrowing, :returned, book: active.book)
+
+      expect(duplicate).not_to be_valid
+      expect(duplicate.errors.of_kind?(:book_id, :taken)).to be(true)
+      expect(active).to be_valid
+      expect(returned).to be_valid
+
+      returned.returned_at = nil
+      expect(returned).not_to be_valid
+      expect(returned.errors.of_kind?(:book_id, :taken)).to be(true)
+    end
+
     it "rejects a return before the borrow" do
       borrowing = build(:borrowing, borrowed_at: Time.current, returned_at: 1.minute.ago)
 
@@ -50,11 +82,20 @@ RSpec.describe Borrowing do
       expect { insert(borrowed_at: 1.day.ago) }.to raise_error(ActiveRecord::RecordNotUnique, /index_borrowings_on_active_book/)
     end
 
+    it "checks due dates in Warsaw even when PostgreSQL uses another session time zone" do
+      described_class.connection.execute("SET LOCAL TIME ZONE 'America/New_York'")
+
+      expect { insert(borrowed_at: Time.utc(2026, 11, 4, 23, 30), due_on: Date.new(2026, 11, 5)) }
+        .to raise_error(ActiveRecord::CheckViolation, /borrowings_due_after_borrowed/)
+    end
+
     {
       "a return before the borrow" => [ { returned_at: 11.days.ago }, ActiveRecord::CheckViolation, /borrowings_returned_after_borrowed/ ],
       "a due date on or before the borrow date" => [ { due_on: 10.days.ago.to_date }, ActiveRecord::CheckViolation, /borrowings_due_after_borrowed/ ],
       "a missing borrow time" => [ { borrowed_at: nil }, ActiveRecord::NotNullViolation, /borrowed_at/ ],
       "a missing due date" => [ { due_on: nil }, ActiveRecord::NotNullViolation, /due_on/ ],
+      "a missing book" => [ { book_id: nil }, ActiveRecord::NotNullViolation, /book_id/ ],
+      "a missing reader" => [ { reader_id: nil }, ActiveRecord::NotNullViolation, /reader_id/ ],
       "a book that does not exist" => [ { book_id: SecureRandom.uuid_v7 }, ActiveRecord::InvalidForeignKey, /books/ ],
       "a reader that does not exist" => [ { reader_id: SecureRandom.uuid_v7 }, ActiveRecord::InvalidForeignKey, /readers/ ]
     }.each do |violation, (attributes, error, message)|

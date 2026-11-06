@@ -18,6 +18,7 @@
 #
 #  readers_card_number_six_digits  (card_number::text ~ '^[0-9]{6}$'::text)
 #  readers_email_normalized        (email::text = lower(btrim(email::text)))
+#  readers_email_shape             (email::text ~ '^[^@[:space:]]+@[^@[:space:]]+$'::text AND email::text !~ '[[:cntrl:]]'::text)
 #  readers_full_name_plain_text    (full_name::text ~ '[^[:space:]]'::text AND full_name::text !~ '[[:cntrl:]]'::text)
 #
 class Reader < ApplicationRecord
@@ -26,9 +27,9 @@ class Reader < ApplicationRecord
   normalizes :full_name, with: NORMALIZE_TEXT
   normalizes :email, with: ->(email) { email.strip.downcase }
 
-  validates :card_number, presence: true, format: SIX_DIGITS_FORMAT
+  validates :card_number, presence: true, format: SIX_DIGITS_FORMAT, uniqueness: true
   validates :full_name, presence: true, length: { maximum: 255 }, format: PLAIN_TEXT_FORMAT
-  validates :email, presence: true, length: { maximum: 254 },
+  validates :email, presence: true, length: { maximum: 254 }, uniqueness: true,
     format: { with: URI::MailTo::EMAIL_REGEXP, allow_blank: true }
 
   def to_param = card_number

@@ -2,6 +2,17 @@ require "rails_helper"
 
 RSpec.describe Reminder do
   it { is_expected.to define_enum_for(:kind).with_values(due_soon: "due_soon", due_today: "due_today").backed_by_column_of_type(:enum).validating }
+  it { is_expected.to belong_to(:borrowing).required }
+
+  it "rejects duplicate kinds for a borrowing without rejecting the original reminder" do
+    existing = create(:reminder)
+    duplicate = build(:reminder, borrowing: existing.borrowing, kind: existing.kind)
+
+    expect(duplicate).not_to be_valid
+    expect(duplicate.errors.of_kind?(:kind, :taken)).to be(true)
+    expect(existing).to be_valid
+    expect(build(:reminder, borrowing: existing.borrowing, kind: "due_today")).to be_valid
+  end
 
   describe "database guards, with validations bypassed" do
     let(:borrowing) { create(:borrowing) }
@@ -21,6 +32,14 @@ RSpec.describe Reminder do
 
     it "rejects a borrowing that does not exist" do
       expect { insert(borrowing_id: SecureRandom.uuid_v7) }.to raise_error(ActiveRecord::InvalidForeignKey)
+    end
+
+    it "rejects a missing borrowing" do
+      expect { insert(borrowing_id: nil) }.to raise_error(ActiveRecord::NotNullViolation, /borrowing_id/)
+    end
+
+    it "rejects a missing kind" do
+      expect { insert(kind: nil) }.to raise_error(ActiveRecord::NotNullViolation, /kind/)
     end
   end
 

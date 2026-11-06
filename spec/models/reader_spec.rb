@@ -11,6 +11,15 @@ RSpec.describe Reader do
     it { is_expected.to validate_presence_of(:card_number) }
     it { is_expected.to validate_presence_of(:email) }
 
+    it "rejects duplicate card numbers and normalized emails without rejecting the original reader" do
+      existing = create(:reader)
+      duplicate = build(:reader, card_number: existing.card_number, email: " #{existing.email.upcase} ")
+
+      expect(duplicate).not_to be_valid
+      expect(duplicate.errors.to_hash).to eq(card_number: [ "has already been taken" ], email: [ "has already been taken" ])
+      expect(existing).to be_valid
+    end
+
     it "rejects card numbers that are not exactly six digits" do
       [ "12345", "1234567", "12345a" ].each do |card_number|
         reader = build(:reader, card_number:)
@@ -79,6 +88,13 @@ RSpec.describe Reader do
       "control characters in the full name" => [ { full_name: "Eve\u0007" }, ActiveRecord::CheckViolation, /readers_full_name_plain_text/ ],
       "a full name longer than 255 characters" => [ { full_name: "x" * 256 }, ActiveRecord::ValueTooLong, /character varying\(255\)/ ],
       "a missing email" => [ { email: nil }, ActiveRecord::NotNullViolation, /email/ ],
+      "a blank email" => [ { email: "" }, ActiveRecord::CheckViolation, /readers_email_shape/ ],
+      "an email without an at sign" => [ { email: "not-an-email" }, ActiveRecord::CheckViolation, /readers_email_shape/ ],
+      "an email with two at signs" => [ { email: "ada@@example.com" }, ActiveRecord::CheckViolation, /readers_email_shape/ ],
+      "an email without a local part" => [ { email: "@example.com" }, ActiveRecord::CheckViolation, /readers_email_shape/ ],
+      "an email without a domain" => [ { email: "ada@" }, ActiveRecord::CheckViolation, /readers_email_shape/ ],
+      "whitespace in an email" => [ { email: "ada lovelace@example.com" }, ActiveRecord::CheckViolation, /readers_email_shape/ ],
+      "control characters in an email" => [ { email: "ada\u0007@example.com" }, ActiveRecord::CheckViolation, /readers_email_shape/ ],
       "an email longer than 254 characters" => [ { email: "#{'a' * 243}@example.com" }, ActiveRecord::ValueTooLong, /character varying\(254\)/ ]
     }.each do |violation, (attributes, error, message)|
       it "rejects #{violation}" do

@@ -31,6 +31,7 @@ class Reminder < ApplicationRecord
   belongs_to :borrowing, inverse_of: :reminders
 
   enum :kind, { due_soon: "due_soon", due_today: "due_today" }, validate: true
+  validates :kind, uniqueness: { scope: :borrowing_id }
 
   scope :pending, -> { where(sent_at: nil) }
 

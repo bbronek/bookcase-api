@@ -91,7 +91,7 @@ Start with [BorrowBook](app/domains/circulation/borrow_book.rb), the [race tests
 
 - **Model the borrowing, not a mutable status flag.** Availability comes from the active borrowing. Returning by borrowing id prevents a repeated old return from closing a newer checkout.
 - **Withdraw rather than erase.** History is part of the brief. A withdrawn book remains readable but cannot be lent; its serial number is never reused. Borrowed books must be returned before withdrawal.
-- **Let PostgreSQL enforce invariants.** Unique identifiers, foreign keys and checks protect stored data. A partial unique index allows one active borrowing per book. Row locks make borrow, withdraw and return safe under competing requests; real two-connection tests verify this.
+- **Validate in Rails; enforce in PostgreSQL.** Models report invalid values and duplicates before saving. Unique indexes, foreign keys, required columns and checks protect stored data even when validations are bypassed. A partial unique index allows one active borrowing per book. Commands preserve `409` conflicts, including concurrent inserts; row locks protect borrow, withdraw and return. Real two-connection tests verify this.
 - **Keep HTTP out of workflows.** Commands return records or raise specific errors; one concern maps errors to HTTP responses. Queries preload associations; Panko defines response shapes and encodes them directly to JSON using Oj.
 - **Record delivery, not enqueueing.** An hourly 09:00–21:00 Warsaw scheduler queues pending reminders. A unique borrowing/kind pair and queue concurrency control prevent ordinary duplicate deliveries. `sent_at` is written only after delivery succeeds; transient failures retry. Missed three-day reminders can catch up before the due date.
 
@@ -125,6 +125,8 @@ Email is not exactly-once: a crash between sending and recording success can dup
 <summary>Existing installations and production configuration</summary>
 
 The Compose project and local database names retain `library-api` / `library_api_*` to preserve existing volumes after the Bookcase rename. The simplification migration removes `failed_at` history and retries previously failed reminders within their delivery window; rollback cannot recover those timestamps and requires non-overlapping borrowing history.
+
+The email-shape migration rejects existing malformed addresses rather than rewriting or deleting them. Correct affected records before retrying it. Rails checks full email syntax; SQL checks basic `local@domain` shape and disallows whitespace and control characters.
 
 The Dockerfile also has a `production` target. It requires `SECRET_KEY_BASE`, `DATABASE_URL`, `APP_HOSTS`, `SMTP_ADDRESS` and `MAILER_FROM`; SMTP credentials and port are optional. Run `bin/rails db:prepare`, the web process and `bin/jobs`. TLS must terminate at a trusted proxy. This target is smoke-tested, not a complete deployment setup.
 

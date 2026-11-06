@@ -62,5 +62,6 @@ RSpec/NestedGroups:
 Layout/LineLength:
   Enabled: true
   Max: 120
+  AllowedPatterns: [ "\\A#  " ]
   Exclude:
     - spec/**/*

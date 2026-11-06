@@ -38,12 +38,13 @@ A change is complete when lint and the full coverage-gated suite pass, affected 
 ## Business and API rules
 
 - Serial numbers and card numbers are unique six-digit strings. Emails are trimmed, lower-cased and unique. Text is trimmed, nonblank, length-limited and rejects control characters. Use Ruby's built-in email regex.
-- PostgreSQL enforces unique identifiers, foreign keys, required fields, date ordering and one active borrowing per book using a partial unique index. Each constraint has a spec bypassing validations. Historical interval overlap is not database-enforced.
+- Rails validates unique identifiers, one active borrowing per book, one reminder per borrowing/kind, required fields and date ordering. PostgreSQL backs these rules with unique indexes, foreign keys, NOT NULL and CHECK constraints. Each constraint has a spec bypassing validations. Historical interval overlap is not database-enforced.
+- Ruby's email regex validates full syntax; PostgreSQL enforces normalized, nonempty `local@domain` shape without whitespace or control characters. Do not duplicate the full email parser in SQL.
 - Status is derived from borrowings; never add a status column.
 - Books are withdrawn, not destroyed. Catalog queries start from `Book.in_catalog` unless withdrawn books are requested. Withdrawn books remain readable, cannot be lent and retain their serial numbers.
 - Borrow and withdraw lock the book before checking state. Return locks the borrowing. Read `Time.current` after acquiring locks. Keep real two-connection race tests.
 - Creates return 201 with Location. Duplicate serials, cards and emails return 409 even for identical requests. Borrowing an already borrowed book returns 409 for any reader. Return and withdrawal remain idempotent.
-- Duplicate inserts run in a `requires_new` transaction and rescue uniqueness errors outside it, preserving a caller's transaction after a conflict.
+- Duplicate inserts run in a `requires_new` transaction and rescue uniqueness errors outside it, preserving a caller's transaction after a conflict. Commands map uniqueness validation failures to the same 409 conflicts; other invalid attributes remain 422. Keep the database-error path for concurrent inserts that both pass validation.
 - Application errors use `application/problem+json`. New conflict types need matching anchors in `public/problems/index.html`. Invalid attributes use `validation-failed` and 422; malformed request shapes or invalid query values use 400. Server-level errors may use the server's format.
 - Keep input validation at the boundary: JSON object bodies, string attributes and valid query shapes. Strong parameters select attributes; they do not validate their types.
 - Reminders are unique per borrowing and kind, pending until `sent_at` is set after delivery. Skip sent reminders, returned borrowings and expired delivery windows. Keep per-reminder queue concurrency control and bounded transient retries. Other failures surface through the job backend and remain pending.
@@ -57,13 +58,13 @@ Use RSpec, FactoryBot and real PostgreSQL. Assert complete success bodies with `
 
 Stub edges such as mail transport, outages and unexpected crashes, not business behavior. Preserve the 100% application line and branch coverage gate, but judge tests by the behavior they prove. Delete tests for deliberately removed features.
 
-Keep security checks, database consistency, OpenAPI validation, Docker smoke tests and hooks. Uniqueness validators are omitted because conflicts are answered by commands as 409; UUIDv7 supplies time-ordered primary keys. No new dependency when Ruby, Rails or an installed gem already does the job simply.
+Keep security checks, database consistency, OpenAPI validation, Docker smoke tests and hooks. The consistency check verifies that unique indexes have matching Rails validators; UUIDv7 supplies time-ordered primary keys. No new dependency when Ruby, Rails or an installed gem already does the job simply.
 
 ## Style and changes
 
 Use Omakase layout, double quotes, two-space indentation and `%i[ a b ]`. Endless methods suit single expressions; longer logic uses regular methods. Prefer keyword arguments with shorthand. Use the vocabulary book, reader, borrowing, reminder, withdraw, borrow and return.
 
-No code/configuration comments except generated annotations, shebangs and Docker directives; explain decisions in documentation. Autocorrect only with `bin/rubocop -a --except Layout/LineLength`; wrap long application lines manually. Specs may use longer lines for complete expected bodies.
+No code/configuration comments except generated annotations, shebangs and Docker directives; explain decisions in documentation. Autocorrect only with `bin/rubocop -a --except Layout/LineLength`; wrap long application lines manually. Specs may use longer lines for complete expected bodies, and generated annotation lines may exceed the limit.
 
 Keep changes scoped. Add request specs and regenerate docs for endpoints or response fields. Add database and model specs for stored-data rules. Document required production settings using `ENV.fetch`. Breaking changes after this recruitment submission require a new API version.
 

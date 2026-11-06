@@ -1,5 +1,3 @@
 DatabaseConsistencyCheckers:
-  UniqueIndexChecker:
-    enabled: false
   ImplicitOrderingChecker:
     enabled: false

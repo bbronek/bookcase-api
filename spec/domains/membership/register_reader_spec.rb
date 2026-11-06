@@ -25,6 +25,14 @@ RSpec.describe Membership::RegisterReader do
     expect(Reader.count).to eq(1)
   end
 
+  it "keeps invalid attributes as validation errors even when identifiers are taken" do
+    register
+
+    expect { register(full_name: "") }.to raise_error(ActiveRecord::RecordInvalid) { |error|
+      expect(error.record.errors.of_kind?(:full_name, :blank)).to be(true)
+    }
+  end
+
   it "refuses a card number that belongs to a different reader" do
     register
 

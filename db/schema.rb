@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_06_170000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_06_193000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -57,6 +57,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_170000) do
     t.index ["email"], name: "index_readers_on_email", unique: true
     t.check_constraint "card_number::text ~ '^[0-9]{6}$'::text", name: "readers_card_number_six_digits"
     t.check_constraint "email::text = lower(btrim(email::text))", name: "readers_email_normalized"
+    t.check_constraint "email::text ~ '^[^@[:space:]]+@[^@[:space:]]+$'::text AND email::text !~ '[[:cntrl:]]'::text", name: "readers_email_shape"
     t.check_constraint "full_name::text ~ '[^[:space:]]'::text AND full_name::text !~ '[[:cntrl:]]'::text", name: "readers_full_name_plain_text"
   end
 

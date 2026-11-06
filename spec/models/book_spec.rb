@@ -15,6 +15,15 @@ RSpec.describe Book do
 
     it { is_expected.to validate_presence_of(:serial_number) }
 
+    it "rejects a serial number reserved by a withdrawn book without rejecting that book itself" do
+      existing = create(:book, :withdrawn)
+      duplicate = build(:book, serial_number: existing.serial_number)
+
+      expect(duplicate).not_to be_valid
+      expect(duplicate.errors.of_kind?(:serial_number, :taken)).to be(true)
+      expect(existing).to be_valid
+    end
+
     it "rejects serial numbers that are not exactly six ASCII digits" do
       [ "12345", "1234567", "12345a", "١٢٣٤٥٦" ].each do |serial_number|
         book = build(:book, serial_number:)

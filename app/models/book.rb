@@ -28,7 +28,7 @@ class Book < ApplicationRecord
 
   normalizes :title, :author, with: NORMALIZE_TEXT
 
-  validates :serial_number, presence: true, format: SIX_DIGITS_FORMAT
+  validates :serial_number, presence: true, format: SIX_DIGITS_FORMAT, uniqueness: true
   validates :title, :author, presence: true, length: { maximum: 255 }, format: PLAIN_TEXT_FORMAT
 
   scope :in_catalog, -> { where(withdrawn_at: nil) }

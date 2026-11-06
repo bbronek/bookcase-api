@@ -26,6 +26,14 @@ RSpec.describe Catalog::AddBook do
     expect(Book.count).to eq(1)
   end
 
+  it "keeps invalid attributes as validation errors even when the serial number is taken" do
+    add
+
+    expect { add(title: "") }.to raise_error(ActiveRecord::RecordInvalid) { |error|
+      expect(error.record.errors.of_kind?(:title, :blank)).to be(true)
+    }
+  end
+
   it "refuses a serial number that belongs to a different book" do
     add
 
