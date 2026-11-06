@@ -141,13 +141,18 @@ RSpec.describe "HTTP protocol" do
     it "answers 503 with Retry-After while the database is unavailable, slow or deadlocked" do
       allow(Rails.logger).to receive(:error)
 
-      ProblemDetails::DATABASE_UNAVAILABLE.each do |database_error|
-        allow(ActiveRecord::Base.connection).to receive(:select_all).and_raise(database_error, "database unavailable")
+      {
+        "The database is unavailable; retry shortly" => ProblemDetails::DATABASE_DOWN,
+        "The database is busy; retry shortly" => ProblemDetails::DATABASE_BUSY
+      }.each do |detail, database_errors|
+        database_errors.each do |database_error|
+          allow(ActiveRecord::Base.connection).to receive(:select_all).and_raise(database_error, "database error")
 
-        get "/api/v1/books"
+          get "/api/v1/books"
 
-        expect(response).to be_problem(:service_unavailable, detail: "The database is unavailable; retry shortly")
-        expect(response.headers["Retry-After"]).to eq("5")
+          expect(response).to be_problem(:service_unavailable, detail:)
+          expect(response.headers["Retry-After"]).to eq("5")
+        end
       end
     end
 

@@ -1,9 +1,9 @@
 module ProblemDetails
   extend ActiveSupport::Concern
 
-  DATABASE_UNAVAILABLE = [
-    ActiveRecord::ConnectionNotEstablished, ActiveRecord::ConnectionTimeoutError,
-    ActiveRecord::LockWaitTimeout, ActiveRecord::QueryCanceled, ActiveRecord::Deadlocked
+  DATABASE_DOWN = [ ActiveRecord::ConnectionNotEstablished ].freeze
+  DATABASE_BUSY = [
+    ActiveRecord::ConnectionTimeoutError, ActiveRecord::LockWaitTimeout, ActiveRecord::QueryCanceled, ActiveRecord::Deadlocked
   ].freeze
 
   included do
@@ -13,7 +13,8 @@ module ProblemDetails
     rescue_from ActiveRecord::RecordInvalid, with: :render_record_invalid
     rescue_from DomainError::Invalid, with: :render_invalid_attribute
     rescue_from DomainError::Conflict, with: :render_conflict
-    rescue_from(*DATABASE_UNAVAILABLE, with: :render_unavailable)
+    rescue_from(*DATABASE_DOWN, with: :render_database_down)
+    rescue_from(*DATABASE_BUSY, with: :render_database_busy)
   end
 
   private
@@ -32,10 +33,14 @@ module ProblemDetails
 
   def render_conflict(error) = render_problem(:conflict, type: error.problem_type, detail: error.message)
 
-  def render_unavailable(error)
-    Rails.logger.error("Database unavailable: #{error.class}: #{error.message}")
+  def render_database_down(error) = render_database_error(error, "The database is unavailable; retry shortly")
+
+  def render_database_busy(error) = render_database_error(error, "The database is busy; retry shortly")
+
+  def render_database_error(error, detail)
+    Rails.logger.error("Database error: #{error.class}: #{error.message}")
     response.set_header("Retry-After", "5")
-    render_problem(:service_unavailable, detail: "The database is unavailable; retry shortly")
+    render_problem(:service_unavailable, detail:)
   end
 
   def render_validation_problem(failures)
