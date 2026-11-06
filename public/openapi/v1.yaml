@@ -22,8 +22,8 @@ info:
     - **Duplicates.** Creates answer `201` with `Location`. An existing serial number, card number or email,
       or a book already borrowed by any reader, answers `409`, even for identical requests.
       Repeating a return answers `200` unchanged, and repeating a withdrawal answers `204`.
-    - **Pagination.** Lists are ordered and paginated with a keyset cursor: `limit` (1 to 100, default 50) and
-      `after`. The next page, when there is one, is in the `Link: <...>; rel="next"` header.
+    - **Pagination.** The book list is ordered by serial number and paginated with a keyset cursor: `limit`
+      (1 to 100, default 50) and `after`. The next page, when there is one, is in the `Link: <...>; rel="next"` header.
     - **Time.** Timestamps are UTC (RFC 3339). Due dates are calendar dates in the library's time zone,
       Europe/Warsaw. A borrowing lasts 30 days.
     - **Concurrency.** Simultaneous requests on the same book are serialized by a row lock or a unique index.

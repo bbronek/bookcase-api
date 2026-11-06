@@ -107,7 +107,7 @@ All paths start with `/api/v1`. Serial and card numbers are six-digit strings, l
 | [`public/openapi/v1.yaml`](public/openapi/v1.yaml) | The OpenAPI 3.1 contract, generated from the request specs; CI fails when it is out of date |
 | [/problems](http://localhost:3000/problems) | Every error type the API returns |
 | [/rails/mailers](http://localhost:3000/rails/mailers) | Previews of both reminder emails, in text and HTML |
-| [docs/diagrams.md](docs/diagrams.md) | The services, a request through the code, the data model, the book states and the reminder pipeline |
+| [docs/diagrams.md](docs/diagrams.md) | The services, a request through the code, the data model, the book states, two staff members racing for one book and the reminder pipeline |
 
 ---
 
@@ -225,10 +225,8 @@ Left out on purpose: Redis-backed queues, pagination and soft-delete gems, resul
 - **AI coding agents** follow the instructions in [AGENTS.md](AGENTS.md); [CLAUDE.md](CLAUDE.md) loads them for Claude Code.
 
 <details>
-<summary>Production configuration and upgrades</summary>
+<summary>Production configuration</summary>
 
-The Dockerfile has a `production` target. It requires `SECRET_KEY_BASE`, `DATABASE_URL`, `APP_HOSTS`, `SMTP_ADDRESS` and `MAILER_FROM`; SMTP credentials and port are optional. Run `bin/rails db:prepare`, the web process and `bin/jobs`. TLS must end at a trusted proxy. The target is smoke-tested, not a complete deployment setup.
-
-When upgrading an existing database, the email-shape and trimmed-text migrations reject malformed addresses and untrimmed text rather than rewriting them; correct those records before retrying.
+The Dockerfile has a `production` target. It requires `SECRET_KEY_BASE`, `DATABASE_URL`, `APP_HOSTS`, `SMTP_ADDRESS` and `MAILER_FROM`. Optional: `SMTP_PORT`, `SMTP_USERNAME` and `SMTP_PASSWORD`, plus `RAILS_MAX_THREADS`, `JOB_THREADS`, `JOB_CONCURRENCY` and `RAILS_LOG_LEVEL` for tuning. Run `bin/rails db:prepare`, the web process and `bin/jobs`. TLS must end at a trusted proxy. The target is smoke-tested, not a complete deployment setup.
 
 </details>

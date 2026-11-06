@@ -34,7 +34,7 @@ flowchart LR
 
 ## A request through the code
 
-Controllers only translate HTTP. Commands change state inside a transaction and raise typed domain errors, and one concern turns every error into a problem document.
+Controllers only translate HTTP. Commands change state inside a transaction and raise typed domain errors, and one concern turns every error into a problem document. The book is checked before the card number, so an unavailable book gets the same answer whatever card is sent.
 
 ```mermaid
 sequenceDiagram
@@ -49,23 +49,23 @@ sequenceDiagram
     C->>Ctl: POST /api/v1/books/000001/borrowings
     Ctl->>Ctl: Content-Type, NUL bytes, string attributes
     Ctl->>Cmd: call(serial_number, card_number)
-    Cmd->>DB: BEGIN, SELECT book FOR UPDATE
-    Cmd->>DB: reader by card number, active borrowing of this book
+    Cmd->>DB: BEGIN, SELECT book FOR UPDATE, then its active borrowing
     alt no such book
         Cmd-->>P: RecordNotFound
         P-->>C: 404 application/problem+json
-    else book withdrawn, or no such reader
-        Cmd-->>P: raise BookWithdrawn or UnknownReader
-        P-->>C: 409 or 422 application/problem+json
-    else no active borrowing
-        Cmd->>DB: INSERT borrowing, COMMIT
+    else book withdrawn, or already borrowed by any reader
+        Cmd-->>P: raise BookWithdrawn or BookBorrowed
+        P-->>C: 409 application/problem+json
+    else card number missing or matching no reader
+        Cmd->>DB: reader by card number
+        Cmd-->>P: raise CardNumberMissing or UnknownReader
+        P-->>C: 422 application/problem+json
+    else the book can be lent
+        Cmd->>DB: reader by card number, INSERT borrowing, COMMIT
         Cmd-->>Ctl: new borrowing
         Ctl->>S: serialize
         S-->>Ctl: JSON
         Ctl-->>C: 201 Created, Location /api/v1/borrowings/id
-    else book already borrowed, by any reader
-        Cmd-->>P: raise BookBorrowed
-        P-->>C: 409 application/problem+json
     end
 ```
 

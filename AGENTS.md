@@ -11,11 +11,11 @@ Bookcase API: a small library API built with Ruby 4.0.9, Rails 8.1 API mode, Pos
 - `app/models`: associations, validations, normalization, scopes and small rules. Workflows belong in commands.
 - `app/serializers/api/v1`: Panko response shapes. Reuse `ReaderSerializer` for borrowing readers and `BookSummarySerializer` for a borrowing's book. Timestamps use UTC ISO 8601 with three fractional digits. Render records with `serialize_to_json` and collections with `Panko::ArraySerializer`; create serializers per call, not shared instances.
 - `app/jobs`: thin wrappers for scheduling and delivery. Mailer templates are in `app/views`; dates and subjects use `config/locales/en.yml`.
-- `ProblemDetails` maps application errors to problem JSON. `ErrorsController` answers unmatched routes with 404. `lib/problem.rb` also supports framework exceptions and host authorization.
+- `ProblemDetails` maps application errors to problem JSON. `ErrorsController` answers unmatched routes with 404. `lib/problem.rb` also supports framework exceptions and host authorization. `lib/reject_invalid_utf8_body.rb` answers non-UTF-8 bodies with 400 before Rails parses them, and the `lowlevel_error_handler` in `config/puma.rb` answers Puma's own errors as problem JSON.
 - `spec/support/openapi`: schemas, a request-spec DSL and recorded examples. Use public rswag configuration, not formatter patches.
 - `public/docs/index.html`: Scalar mounted on `#app`. Never use the id `api-reference`: Scalar's standalone script auto-mounts a second, empty reference on it.
 - `db/migrate`: forward schema changes. `db/schema.rb` and model schema annotations are generated.
-- `spec`: `models` for validations and database guards, `domains` for commands and queries, `requests/api/v1` for endpoints and the OpenAPI document, `integration` for races and the reminder lifecycle, `jobs`, `mailers` and `docs`.
+- `spec`: `models` for validations and database guards, `domains` for commands, `requests/api/v1` for endpoints and the OpenAPI document, `integration` for races and the reminder lifecycle, `jobs`, `mailers` and `docs`.
 
 `README.md` explains the design decisions and `docs/diagrams.md` the flows; read them before changing behaviour.
 
@@ -47,7 +47,7 @@ A change is complete when lint and the full coverage-gated suite pass, affected 
 - Borrow and withdraw lock the book before checking state. Return locks the borrowing. Read `Time.current` after acquiring locks. Keep real two-connection race tests.
 - Creates return 201 with Location. Duplicate serials, cards and emails return 409 even for identical requests. Borrowing an already borrowed book returns 409 for any reader. Return and withdrawal remain idempotent.
 - Duplicate inserts run in a `requires_new` transaction and rescue uniqueness errors outside it, preserving a caller's transaction after a conflict. Commands map uniqueness validation failures to the same 409 conflicts; other invalid attributes remain 422. Keep the database-error path for concurrent inserts that both pass validation.
-- Application errors use `application/problem+json`. New conflict types need matching anchors in `public/problems/index.html`. Invalid attributes use `validation-failed` and 422; malformed request shapes or invalid query values use 400. Server-level errors may use the server's format.
+- Application errors use `application/problem+json`. New conflict types need matching anchors in `public/problems/index.html`. Invalid attributes use `validation-failed` and 422; malformed request shapes or invalid query values use 400. The only plain-text error is Puma's 413 for a body over 10 MB.
 - Keep input validation at the boundary: JSON object bodies, string attributes and valid query shapes. Strong parameters select attributes; they do not validate their types.
 - Reminders are unique per borrowing and kind, pending until `sent_at` is set after delivery. Skip sent reminders, returned borrowings and expired delivery windows. Keep per-reminder queue concurrency control and bounded transient retries. Other failures surface through the job backend and remain pending.
 - Do not promise exactly-once email: a crash between sending and recording success can duplicate delivery. Pending reminders are retried only within their delivery window.
@@ -60,7 +60,7 @@ Use RSpec, FactoryBot and real PostgreSQL. Assert complete success bodies with `
 
 Stub edges such as mail transport, outages and unexpected crashes, not business behavior. Preserve the 100% application line and branch coverage gate, but judge tests by the behavior they prove. Prove each rule once, at the layer that owns it, plus one request spec for its HTTP mapping; do not repeat a model or command assertion in a request spec. Thin queries are covered by request specs. Delete tests for deliberately removed features.
 
-Keep security checks, database consistency, OpenAPI validation, Docker smoke tests and hooks. The consistency check verifies that unique indexes have matching Rails validators; UUIDv7 supplies time-ordered primary keys. No new dependency when Ruby, Rails or an installed gem already does the job simply.
+Keep security checks, database consistency, OpenAPI validation, Docker smoke tests and hooks. `database_consistency` runs every checker except `ImplicitOrderingChecker`, which UUIDv7 primary keys make unnecessary. No new dependency when Ruby, Rails or an installed gem already does the job simply.
 
 ## Style and changes
 
