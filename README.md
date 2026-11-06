@@ -1,6 +1,8 @@
-# Library API
+# Bookcase API
 
 A JSON API for library staff, built with Rails 8.1 and PostgreSQL 18.
+
+The Rails namespace and image tags use Bookcase. The Compose project and local database names retain `library-api` / `library_api_*` to preserve existing volumes and data.
 
 ## Run
 

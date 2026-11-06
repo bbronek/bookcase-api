@@ -2,20 +2,20 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-export COMPOSE_PROJECT_NAME="library-api-smoke"
-export APP_IMAGE="library-api:smoke"
+export COMPOSE_PROJECT_NAME="bookcase-api-smoke"
+export APP_IMAGE="bookcase-api:smoke"
 export PORT="${PORT:-3097}"
 export DB_PUBLISHED_PORT="${DB_PUBLISHED_PORT:-5497}"
 base="http://localhost:${PORT}"
 production_port="${PRODUCTION_PORT:-3096}"
 
 cleanup() {
-  docker rm --force library-api-smoke-production library-api-smoke-worker > /dev/null 2>&1 || true
+  docker rm --force bookcase-api-smoke-production bookcase-api-smoke-worker > /dev/null 2>&1 || true
   docker compose down --volumes --remove-orphans > /dev/null 2>&1 || true
-  docker image rm library-api:smoke library-api:production > /dev/null 2>&1 || true
+  docker image rm bookcase-api:smoke bookcase-api:production > /dev/null 2>&1 || true
 }
 trap cleanup EXIT
-trap 'echo "smoke test failed" >&2; docker compose logs >&2; docker logs library-api-smoke-production >&2 2> /dev/null; docker logs library-api-smoke-worker >&2 2> /dev/null || true' ERR
+trap 'echo "smoke test failed" >&2; docker compose logs >&2; docker logs bookcase-api-smoke-production >&2 2> /dev/null; docker logs bookcase-api-smoke-worker >&2 2> /dev/null || true' ERR
 
 step() { printf '%s\n' "-- $*"; }
 status_of() { curl --silent --output /dev/null --write-out '%{http_code}' "$@"; }
@@ -54,18 +54,18 @@ docker compose exec -T web sh -c 'bin/rails db:test:prepare && bundle exec rspec
 docker compose exec -T web bin/rails runner 'abort "Unexpected reminder deliveries" unless Reminder.where.not(sent_at: nil).count == 2 && Dir.glob(Rails.root.join("tmp/mails/*")).sum { |path| File.read(path).scan(/^Message-ID:/i).size } == 2'
 
 step "the production image serves the API and runs the worker"
-docker build --quiet --target production --tag library-api:production . > /dev/null
+docker build --quiet --target production --tag bookcase-api:production . > /dev/null
 production_env=(
   --network "${COMPOSE_PROJECT_NAME}_default"
-  -e DATABASE_URL="postgres://postgres:postgres@db/library_api_production" -e SECRET_KEY_BASE=smoke
+  -e DATABASE_URL="postgres://postgres:postgres@db/bookcase_api_production" -e SECRET_KEY_BASE=smoke
   -e APP_HOSTS=localhost -e MAILER_FROM="Library <library@example.com>" -e SMTP_ADDRESS=smtp.invalid
 )
-docker run --rm "${production_env[@]}" library-api:production bin/rails db:prepare > /dev/null
-docker run --detach --name library-api-smoke-production "${production_env[@]}" \
-  --publish "127.0.0.1:${production_port}:3000" library-api:production > /dev/null
-docker run --detach --name library-api-smoke-worker "${production_env[@]}" library-api:production bin/jobs > /dev/null
+docker run --rm "${production_env[@]}" bookcase-api:production bin/rails db:prepare > /dev/null
+docker run --detach --name bookcase-api-smoke-production "${production_env[@]}" \
+  --publish "127.0.0.1:${production_port}:3000" bookcase-api:production > /dev/null
+docker run --detach --name bookcase-api-smoke-worker "${production_env[@]}" bookcase-api:production bin/jobs > /dev/null
 for _ in $(seq 1 30); do
-  [[ $(docker inspect --format '{{.State.Health.Status}}' library-api-smoke-production) == healthy ]] && break
+  [[ $(docker inspect --format '{{.State.Health.Status}}' bookcase-api-smoke-production) == healthy ]] && break
   sleep 1
 done
 production="http://localhost:${production_port}"
@@ -73,7 +73,7 @@ curl --fail --silent "$production/health/ready" | jq --exit-status '.status == "
 [[ $(status_of -X POST "$production/api/v1/books" -H 'Content-Type: application/json' -d '{"serial_number":"900001","title":"Smoke","author":"Test"}') == 201 ]]
 [[ $(status_of -H 'Host: attacker.example' "$production/api/v1/books") == 403 ]]
 for _ in $(seq 1 30); do
-  workers=$(docker run --rm "${production_env[@]}" library-api:production bin/rails runner 'print SolidQueue::Process.where(kind: "Worker").count')
+  workers=$(docker run --rm "${production_env[@]}" bookcase-api:production bin/rails runner 'print SolidQueue::Process.where(kind: "Worker").count')
   [[ "$workers" -ge 1 ]] && break
   sleep 1
 done

@@ -12,7 +12,7 @@ Bundler.require(*Rails.groups)
 
 require_relative "../lib/problem"
 
-module LibraryApi
+module Bookcase
   class Application < Rails::Application
     config.load_defaults 8.1
 

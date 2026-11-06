@@ -1,5 +1,7 @@
+name: library-api
+
 x-app: &app
-  image: ${APP_IMAGE:-library-api:development}
+  image: ${APP_IMAGE:-bookcase-api:development}
   build:
     context: .
     target: development

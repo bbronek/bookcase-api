@@ -8,7 +8,7 @@ RSpec.configure do |config|
     "v1.yaml" => {
       openapi: "3.1.0",
       info: {
-        title: "Library API",
+        title: "Bookcase API",
         version: "1.0.0",
         description: <<~MARKDOWN
           A JSON API for library staff: the catalog of books, registered readers, borrowing and returning,

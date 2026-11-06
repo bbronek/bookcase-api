@@ -1,7 +1,7 @@
 ---
 openapi: 3.1.0
 info:
-  title: Library API
+  title: Bookcase API
   version: 1.0.0
   description: |
     A JSON API for library staff: the catalog of books, registered readers, borrowing and returning,
