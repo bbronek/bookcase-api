@@ -1,21 +1,17 @@
-# Preview at http://localhost:3000/rails/mailers/reminder_mailer
 class ReminderMailerPreview < ActionMailer::Preview
-  def upcoming
-    ReminderMailer.with(reminder: reminder("upcoming")).reminder
-  end
+  def due_soon = ReminderMailer.with(borrowing: borrowing_due_in(Reminder::DUE_SOON_PERIOD)).due_soon
 
-  def due_today
-    ReminderMailer.with(reminder: reminder("due_today")).reminder
-  end
+  def due_today = ReminderMailer.with(borrowing: borrowing_due_in(0.days)).due_today
 
   private
 
-  def reminder(kind)
-    borrowing = Borrowing.active.first || Borrowing.new(
+  def borrowing_due_in(duration)
+    borrowed_at = Time.current + duration - Borrowing::PERIOD
+    Borrowing.new(
       book: Book.new(serial_number: "000001", title: "Dune", author: "Frank Herbert"),
       reader: Reader.new(card_number: "100001", full_name: "Ada Lovelace", email: "ada@example.com"),
-      borrowed_at: 27.days.ago, due_on: 3.days.from_now.to_date
+      borrowed_at:,
+      due_on: Borrowing.due_on_for(borrowed_at)
     )
-    Reminder.new(borrowing:, kind:)
   end
 end

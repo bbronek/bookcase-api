@@ -1,0 +1,9 @@
+Hello <%= @reader.full_name %>,
+
+"<%= @book.title %>" is due back on <%= l(@borrowing.due_on, format: :long) %>.
+
+<%= render "borrowing_details" %>
+
+Please return it to the library by then.
+
+Your library

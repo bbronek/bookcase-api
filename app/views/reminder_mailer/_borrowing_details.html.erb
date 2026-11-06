@@ -1,0 +1,7 @@
+<table style="border-collapse: collapse;">
+  <tr><th align="left" style="padding-right: 16px;">Title</th><td><%= @book.title %></td></tr>
+  <tr><th align="left" style="padding-right: 16px;">Author</th><td><%= @book.author %></td></tr>
+  <tr><th align="left" style="padding-right: 16px;">Serial number</th><td><%= @book.serial_number %></td></tr>
+  <tr><th align="left" style="padding-right: 16px;">Borrowed on</th><td><%= l(@borrowing.borrowed_at.to_date, format: :long) %></td></tr>
+  <tr><th align="left" style="padding-right: 16px;">Due on</th><td><%= l(@borrowing.due_on, format: :long) %></td></tr>
+</table>

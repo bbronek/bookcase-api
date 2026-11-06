@@ -11,7 +11,7 @@ RSpec.describe "Seeds" do
 
     expect(books: Book.count, readers: Reader.count, borrowings: Borrowing.count, active: Borrowing.active.count)
       .to eq(books: 5, readers: 3, borrowings: 4, active: 3)
-    expect(Borrowing.active.where(due_on: Time.zone.today..3.days.from_now.to_date).count).to eq(2)
+    expect(Notifications::ScheduleDueReminders.call.map(&:kind)).to contain_exactly("due_today", "due_soon")
   end
 
   it "never runs outside development" do

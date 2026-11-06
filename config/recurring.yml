@@ -1,9 +1,8 @@
-# Recurring tasks run by the Solid Queue scheduler (bin/jobs).
 default: &default
-  due_date_reminders:
-    class: DueDateRemindersJob
-    schedule: every day at 9am
-    description: "Email readers 3 days before and on the due date of an active borrowing"
+  schedule_due_reminders:
+    class: ScheduleDueRemindersJob
+    schedule: "0 9-21 * * * Europe/Warsaw"
+    description: "Queue a reminder email for every borrowing due today or in the next three days; hourly runs retry anything missed"
 
 development:
   <<: *default

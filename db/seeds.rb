@@ -15,7 +15,7 @@ return unless Rails.env.development?
 ].each { |card_number, full_name, email| Membership::RegisterReader.call(card_number:, full_name:, email:) }
 
 if Borrowing.none?
-  borrowed_to_be_due_soon = 3.days.from_now - Borrowing::PERIOD
+  borrowed_to_be_due_soon = Reminder::DUE_SOON_PERIOD.from_now - Borrowing::PERIOD
   borrowed_to_be_due_today = Time.current - Borrowing::PERIOD
 
   Circulation::BorrowBook.call(serial_number: "000001", card_number: "100001", borrowed_at: borrowed_to_be_due_soon)

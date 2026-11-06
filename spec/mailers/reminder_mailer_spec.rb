@@ -1,23 +1,33 @@
 require "rails_helper"
 
 RSpec.describe ReminderMailer do
-  let(:book) { create(:book, title: "Solaris", author: "Stanisław Lem", serial_number: "000004") }
-  let(:reader) { create(:reader, full_name: "Grace Hopper", email: "grace@example.com") }
-  let(:borrowing) { create(:borrowing, book:, reader:, borrowed_at: Time.zone.parse("2026-10-08 10:00"), due_on: Date.new(2026, 11, 7)) }
-
-  it "builds the 3-days-before reminder" do
-    mail = described_class.with(reminder: build(:reminder, borrowing:, kind: "upcoming")).reminder
-
-    expect(mail.to).to eq([ "grace@example.com" ])
-    expect(mail.from).to eq([ "library@example.com" ])
-    expect(mail.subject).to eq("\"Solaris\" is due back in 3 days")
-    expect(mail.body.encoded).to include("Hello Grace Hopper", "due back in 3 days", "Solaris", "Stanisław Lem", "000004", "2026-10-08", "2026-11-07")
+  let(:borrowing) do
+    create(:borrowing,
+      book: create(:book, serial_number: "000004", title: "Solaris", author: "Stanisław Lem"),
+      reader: create(:reader, full_name: "Grace Hopper", email: "grace@example.com"),
+      borrowed_at: Time.zone.parse("2026-10-08 10:00"),
+      due_on: Date.new(2026, 11, 7))
   end
 
-  it "builds the due-today reminder" do
-    mail = described_class.with(reminder: build(:reminder, borrowing:, kind: "due_today")).reminder
+  describe "#due_soon" do
+    subject(:mail) { described_class.with(borrowing:).due_soon }
 
-    expect(mail.subject).to eq("\"Solaris\" is due back today")
-    expect(mail.body.encoded).to include("due back today")
+    it "tells the reader the due date in both parts" do
+      expect(mail).to have_attributes(to: [ "grace@example.com" ], from: [ "library@example.com" ],
+                                      subject: "Reminder: \"Solaris\" is due back on Saturday, 7 November 2026")
+      expect(mail.text_part.decoded).to include("Hello Grace Hopper", "is due back on Saturday, 7 November 2026",
+                                                "Stanisław Lem", "000004", "Thursday, 8 October 2026")
+      expect(mail.html_part.decoded).to include("Hello Grace Hopper", "<strong>Saturday, 7 November 2026</strong>")
+    end
+  end
+
+  describe "#due_today" do
+    subject(:mail) { described_class.with(borrowing:).due_today }
+
+    it "tells the reader the book is due today" do
+      expect(mail.subject).to eq("\"Solaris\" is due back today")
+      expect(mail.text_part.decoded).to include("is due back today")
+      expect(mail.html_part.decoded).to include("<strong>today</strong>")
+    end
   end
 end

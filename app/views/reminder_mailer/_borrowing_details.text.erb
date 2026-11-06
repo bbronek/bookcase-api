@@ -1,0 +1,5 @@
+  Title:          <%= @book.title %>
+  Author:         <%= @book.author %>
+  Serial number:  <%= @book.serial_number %>
+  Borrowed on:    <%= l(@borrowing.borrowed_at.to_date, format: :long) %>
+  Due on:         <%= l(@borrowing.due_on, format: :long) %>

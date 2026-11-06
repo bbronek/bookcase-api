@@ -22,7 +22,7 @@ FactoryBot.define do
     due_on { Borrowing.due_on_for(borrowed_at) }
 
     trait :due_soon do
-      borrowed_at { Time.current + 3.days - Borrowing::PERIOD }
+      borrowed_at { Time.current + Reminder::DUE_SOON_PERIOD - Borrowing::PERIOD }
     end
 
     trait :due_today do
@@ -36,12 +36,15 @@ FactoryBot.define do
   end
 
   factory :reminder do
-    borrowing
-    kind { "upcoming" }
+    borrowing factory: %i[ borrowing due_soon ]
+    kind { "due_soon" }
 
     trait :sent do
       sent_at { Time.current }
     end
 
+    trait :failed do
+      failed_at { Time.current }
+    end
   end
 end

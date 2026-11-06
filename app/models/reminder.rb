@@ -1,23 +1,51 @@
-# A reminder email that was (or is about to be) sent for a borrowing.
-# One row per (borrowing, kind), enforced by a unique index, which is what makes the daily job idempotent.
+# == Schema Information
+#
+# Table name: reminders
+#
+#  id           :uuid             not null, primary key
+#  failed_at    :datetime
+#  kind         :enum             not null, enum_type: reminder_kind
+#  sent_at      :datetime
+#  created_at   :datetime         not null
+#  updated_at   :datetime         not null
+#  borrowing_id :uuid             not null
+#
+# Indexes
+#
+#  index_reminders_on_borrowing_id_and_kind  (borrowing_id,kind) UNIQUE
+#
+# Foreign Keys
+#
+#  fk_rails_...  (borrowing_id => borrowings.id)
+#
+# Check Constraints
+#
+#  reminders_sent_or_failed  (sent_at IS NULL OR failed_at IS NULL)
+#
+# Enums
+#
+#  reminder_kind  due_soon, due_today
+#
 class Reminder < ApplicationRecord
-  # How many days before the due date each kind of reminder is sent.
-  DAYS_BEFORE_DUE = { "upcoming" => 3, "due_today" => 0 }.freeze
+  DUE_SOON_PERIOD = 3.days
+  DUE_DATES = {
+    "due_today" => ->(today) { today..today },
+    "due_soon" => ->(today) { today.next_day..(today + DUE_SOON_PERIOD) }
+  }.freeze
 
-  belongs_to :borrowing
+  belongs_to :borrowing, inverse_of: :reminders
 
-  enum :kind, DAYS_BEFORE_DUE.keys.index_by(&:itself), validate: true
+  enum :kind, { due_soon: "due_soon", due_today: "due_today" }, validate: true
 
-  scope :sent, -> { where.not(sent_at: nil) }
+  scope :pending, -> { where(sent_at: nil, failed_at: nil) }
 
-  # Sends the email once. Safe to call again for the same borrowing and kind: a second call is a no-op.
-  # Delivery is at-least-once: if the process dies between deliver_now and the update, a retry resends.
-  def self.deliver!(borrowing, kind)
-    reminder = create_or_find_by!(borrowing:, kind:)
-    return reminder if reminder.sent_at?
+  def sent? = sent_at?
 
-    ReminderMailer.with(reminder:).reminder.deliver_now
-    reminder.update!(sent_at: Time.current)
-    reminder
-  end
+  def failed? = failed_at?
+
+  def pending? = !sent? && !failed?
+
+  def self.due_dates(kind, today: Time.zone.today) = DUE_DATES.fetch(kind).call(today)
+
+  def deliverable? = pending? && !borrowing.returned? && Reminder.due_dates(kind).cover?(borrowing.due_on)
 end

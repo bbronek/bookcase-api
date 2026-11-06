@@ -15,6 +15,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_100400) do
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
 
+  # Custom types defined in this database.
+  # Note that some types may not work with other database engines. Be careful if changing database.
+  create_enum "reminder_kind", ["due_soon", "due_today"]
+
   create_table "books", id: :uuid, default: -> { "uuidv7()" }, force: :cascade do |t|
     t.string "serial_number", null: false
     t.string "title", limit: 255, null: false
@@ -57,13 +61,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_100400) do
     t.check_constraint "full_name::text ~ '[^[:space:]]'::text AND full_name::text !~ '[[:cntrl:]]'::text", name: "readers_full_name_plain_text"
   end
 
-  create_table "reminders", force: :cascade do |t|
+  create_table "reminders", id: :uuid, default: -> { "uuidv7()" }, force: :cascade do |t|
     t.uuid "borrowing_id", null: false
-    t.string "kind", null: false
+    t.enum "kind", null: false, enum_type: "reminder_kind"
     t.datetime "sent_at"
+    t.datetime "failed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["borrowing_id", "kind"], name: "index_reminders_on_borrowing_id_and_kind", unique: true
+    t.check_constraint "sent_at IS NULL OR failed_at IS NULL", name: "reminders_sent_or_failed"
   end
 
   create_table "solid_queue_batch_executions", force: :cascade do |t|

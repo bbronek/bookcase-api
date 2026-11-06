@@ -8,7 +8,7 @@ A JSON API for library staff, built with Rails 8.1 and PostgreSQL 18.
 docker compose up
 ```
 
-Open http://localhost:3000/docs for the generated API reference. Compose prepares five books and three readers, then starts Rails and the background worker. Development emails are logged; previews are at `/rails/mailers`.
+Open http://localhost:3000/docs for the generated API reference. Compose prepares five books and three readers, then starts Rails and the background worker. Development emails are saved under `tmp/mails` in the worker; previews are at `/rails/mailers`.
 
 ## API
 
@@ -32,7 +32,7 @@ Commands in `app/domains` own writes and transactions; controllers translate HTT
 
 Availability is derived from the active borrowing. Returns target a borrowing id, so a repeated old return cannot close a newer borrowing. Withdrawals keep history and reserve the serial number. UUIDv7 identifies internal records; staff use serial and card numbers.
 
-Borrowings last 30 calendar days in Europe/Warsaw. The existing daily reminder job sends three days before the due date and on the due date. Sending and recording delivery are not atomic, so a crash between them can duplicate an email. Authentication is omitted for this task.
+Borrowings last 30 calendar days in Europe/Warsaw. An hourly daytime scheduler queues reminder deliveries separately, three days before the due date and on the due date. Due-soon reminders can catch up before the due date. Transient failures retry; rejected recipient addresses are recorded as failed. Sending and recording delivery are not atomic, so a crash between them can duplicate an email. Authentication is omitted for this task.
 
 ## Checks
 
