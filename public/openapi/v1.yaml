@@ -13,8 +13,9 @@ info:
       a breaking change gets `/api/v2`. Clients must ignore fields they do not know.
     - **Identifiers.** Books are addressed by their six-digit serial number and readers by their six-digit card
       number. Borrowings have a UUIDv7 id.
-    - **Media types.** Requests with a body must be `application/json`; anything else is `415`.
-      Responses are `application/json`, application errors are `application/problem+json`.
+    - **Media types.** Requests with a body must be `application/json` and valid UTF-8; anything else is
+      `415` or `400`. Responses are `application/json`, errors are `application/problem+json`. Only bodies over
+      10 MB are refused by the web server itself, with a plain-text `413`.
     - **Errors** follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457): `type`, `title`, `status`, `detail`,
       `instance`, the `request_id` (also in the `X-Request-Id` header) and, for invalid attributes, `errors`
       with a JSON pointer per attribute.
@@ -41,39 +42,9 @@ tags:
 paths:
   "/api/v1/books":
     get:
-      summary: List books
-      tags:
-      - Books
-      operationId: listBooks
-      description: Books in the catalog ordered by serial number, with each book's
-        status and current borrowing. `?status=withdrawn` lists withdrawn books instead.
-      parameters:
-      - name: status
-        in: query
-        required: false
-        schema:
-          type: string
-          enum:
-          - available
-          - borrowed
-          - withdrawn
-        description: Only books in this status.
-      - name: limit
-        in: query
-        required: false
-        description: Page size.
-        schema:
-          type: integer
-          minimum: 1
-          maximum: 100
-          default: 50
-      - name: after
-        in: query
-        required: false
-        schema:
-          type: string
-        description: 'Cursor from the `Link: rel="next"` header of the previous page.'
       responses:
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
         '200':
           description: A page of books
           headers:
@@ -116,15 +87,48 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
-    post:
-      summary: Add a book
+      summary: List books
       tags:
       - Books
-      operationId: addBook
-      description: Adds a book to the catalog. A serial number already registered,
-        including a withdrawn book, answers 409.
-      parameters: []
+      operationId: listBooks
+      description: Books in the catalog ordered by serial number, with each book's
+        status and current borrowing. `?status=withdrawn` lists withdrawn books instead.
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - available
+          - borrowed
+          - withdrawn
+        description: Only books in this status.
+      - name: limit
+        in: query
+        required: false
+        description: Page size.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      - name: after
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Cursor from the `Link: rel="next"` header of the previous page.'
+    post:
       responses:
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '413':
+          "$ref": "#/components/responses/ContentTooLarge"
+        '415':
+          "$ref": "#/components/responses/UnsupportedMediaType"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
         '201':
           description: Added
           headers:
@@ -173,6 +177,13 @@ paths:
                   detail: must be a string
               schema:
                 "$ref": "#/components/schemas/Problem"
+      summary: Add a book
+      tags:
+      - Books
+      operationId: addBook
+      description: Adds a book to the catalog. A serial number already registered,
+        including a withdrawn book, answers 409.
+      parameters: []
       requestBody:
         content:
           application/json:
@@ -180,22 +191,12 @@ paths:
               "$ref": "#/components/schemas/NewBook"
         required: true
   "/api/v1/books/{serial_number}":
-    parameters:
-    - name: serial_number
-      in: path
-      required: true
-      schema:
-        type: string
-        pattern: "^[0-9]{6}$"
-        example: '000001'
-        description: Six digits, leading zeros included. Never reused.
     get:
-      summary: Get a book with its borrowing history
-      tags:
-      - Books
-      operationId: getBook
-      description: Withdrawn books stay readable, with their history.
       responses:
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
         '200':
           description: The book and its full history, newest first
           content:
@@ -247,14 +248,17 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
-    delete:
-      summary: Withdraw a book
+      summary: Get a book with its borrowing history
       tags:
       - Books
-      operationId: withdrawBook
-      description: Takes the book out of the catalog. Its history is kept and its
-        serial number is never reused. Withdrawing a withdrawn book answers 204 again.
+      operationId: getBook
+      description: Withdrawn books stay readable, with their history.
+    delete:
       responses:
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
         '204':
           description: Withdrawn
         '404':
@@ -283,7 +287,12 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
-  "/api/v1/books/{serial_number}/borrowings":
+      summary: Withdraw a book
+      tags:
+      - Books
+      operationId: withdrawBook
+      description: Takes the book out of the catalog. Its history is kept and its
+        serial number is never reused. Withdrawing a withdrawn book answers 204 again.
     parameters:
     - name: serial_number
       in: path
@@ -293,16 +302,17 @@ paths:
         pattern: "^[0-9]{6}$"
         example: '000001'
         description: Six digits, leading zeros included. Never reused.
+  "/api/v1/books/{serial_number}/borrowings":
     post:
-      summary: Borrow a book
-      tags:
-      - Borrowings
-      operationId: borrowBook
-      description: |
-        Lends the book to the reader with this card number for 30 days. An already borrowed book answers 409,
-        even for the same reader. A withdrawn book cannot be borrowed.
-      parameters: []
       responses:
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '413':
+          "$ref": "#/components/responses/ContentTooLarge"
+        '415':
+          "$ref": "#/components/responses/UnsupportedMediaType"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
         '201':
           description: Borrowed
           headers:
@@ -369,27 +379,36 @@ paths:
                   detail: does not match any reader
               schema:
                 "$ref": "#/components/schemas/Problem"
+      summary: Borrow a book
+      tags:
+      - Borrowings
+      operationId: borrowBook
+      description: |
+        Lends the book to the reader with this card number for 30 days. An already borrowed book answers 409,
+        even for the same reader. A withdrawn book cannot be borrowed.
+      parameters: []
       requestBody:
         content:
           application/json:
             schema:
               "$ref": "#/components/schemas/NewBorrowing"
         required: true
-  "/api/v1/borrowings/{id}":
     parameters:
-    - name: id
+    - name: serial_number
       in: path
       required: true
       schema:
         type: string
-        format: uuid
-        description: UUIDv7 generated by PostgreSQL.
+        pattern: "^[0-9]{6}$"
+        example: '000001'
+        description: Six digits, leading zeros included. Never reused.
+  "/api/v1/borrowings/{id}":
     get:
-      summary: Get a borrowing
-      tags:
-      - Borrowings
-      operationId: getBorrowing
       responses:
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
         '200':
           description: The borrowing
           content:
@@ -421,7 +440,10 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
-  "/api/v1/borrowings/{id}/return":
+      summary: Get a borrowing
+      tags:
+      - Borrowings
+      operationId: getBorrowing
     parameters:
     - name: id
       in: path
@@ -430,14 +452,13 @@ paths:
         type: string
         format: uuid
         description: UUIDv7 generated by PostgreSQL.
+  "/api/v1/borrowings/{id}/return":
     post:
-      summary: Return a book
-      tags:
-      - Borrowings
-      operationId: returnBook
-      description: Closes the borrowing. Returning an already returned borrowing changes
-        nothing and answers 200 again.
       responses:
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
         '200':
           description: Returned
           headers:
@@ -475,30 +496,27 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
+      summary: Return a book
+      tags:
+      - Borrowings
+      operationId: returnBook
+      description: Closes the borrowing. Returning an already returned borrowing changes
+        nothing and answers 200 again.
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+        description: UUIDv7 generated by PostgreSQL.
   "/api/v1/readers":
     get:
-      summary: List readers
-      tags:
-      - Readers
-      operationId: listReaders
-      description: Readers ordered by card number.
-      parameters:
-      - name: limit
-        in: query
-        required: false
-        description: Page size.
-        schema:
-          type: integer
-          minimum: 1
-          maximum: 100
-          default: 50
-      - name: after
-        in: query
-        required: false
-        schema:
-          type: string
-        description: 'Cursor from the `Link: rel="next"` header of the previous page.'
       responses:
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
         '200':
           description: A page of readers
           headers:
@@ -520,15 +538,37 @@ paths:
                 type: array
                 items:
                   "$ref": "#/components/schemas/Reader"
-    post:
-      summary: Register a reader
+      summary: List readers
       tags:
       - Readers
-      operationId: registerReader
-      description: Registers a reader. A card number or email already registered answers
-        409.
-      parameters: []
+      operationId: listReaders
+      description: Readers ordered by card number.
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        description: Page size.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+      - name: after
+        in: query
+        required: false
+        schema:
+          type: string
+        description: 'Cursor from the `Link: rel="next"` header of the previous page.'
+    post:
       responses:
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '413':
+          "$ref": "#/components/responses/ContentTooLarge"
+        '415':
+          "$ref": "#/components/responses/UnsupportedMediaType"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
         '201':
           description: Registered
           headers:
@@ -578,6 +618,13 @@ paths:
                   detail: is invalid
               schema:
                 "$ref": "#/components/schemas/Problem"
+      summary: Register a reader
+      tags:
+      - Readers
+      operationId: registerReader
+      description: Registers a reader. A card number or email already registered answers
+        409.
+      parameters: []
       requestBody:
         content:
           application/json:
@@ -585,21 +632,12 @@ paths:
               "$ref": "#/components/schemas/Reader"
         required: true
   "/api/v1/readers/{card_number}":
-    parameters:
-    - name: card_number
-      in: path
-      required: true
-      schema:
-        type: string
-        pattern: "^[0-9]{6}$"
-        example: '100001'
-        description: Six digits, leading zeros included.
     get:
-      summary: Get a reader
-      tags:
-      - Readers
-      operationId: getReader
       responses:
+        '400':
+          "$ref": "#/components/responses/BadRequest"
+        '503':
+          "$ref": "#/components/responses/ServiceUnavailable"
         '200':
           description: The reader
           content:
@@ -623,6 +661,19 @@ paths:
                 request_id: 5b0e3c6a-9a87-4a8e-b43c-2f1f1d6f8a10
               schema:
                 "$ref": "#/components/schemas/Problem"
+      summary: Get a reader
+      tags:
+      - Readers
+      operationId: getReader
+    parameters:
+    - name: card_number
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[0-9]{6}$"
+        example: '100001'
+        description: Six digits, leading zeros included.
   "/health/live":
     get:
       summary: Liveness
@@ -992,3 +1043,36 @@ components:
               enum:
               - ok
               - error
+  responses:
+    BadRequest:
+      description: 'Malformed request: invalid JSON or UTF-8, a body that is not a
+        JSON object, or invalid query values'
+      content:
+        application/problem+json:
+          schema:
+            "$ref": "#/components/schemas/Problem"
+    UnsupportedMediaType:
+      description: The request body is not `application/json`
+      content:
+        application/problem+json:
+          schema:
+            "$ref": "#/components/schemas/Problem"
+    ContentTooLarge:
+      description: The body is larger than 10 MB, so the web server refuses it before
+        the application, in plain text
+      content:
+        text/plain:
+          schema:
+            type: string
+    ServiceUnavailable:
+      description: The database is down, or a lock wait or statement exceeded its
+        timeout
+      headers:
+        Retry-After:
+          schema:
+            type: string
+          description: Seconds to wait before retrying.
+      content:
+        application/problem+json:
+          schema:
+            "$ref": "#/components/schemas/Problem"

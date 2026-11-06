@@ -4,7 +4,7 @@ A JSON API for library staff: keep a catalog of physical books, register readers
 
 Built as a take-home assignment for a Ruby on Rails Developer role.
 
-**Status:** all required features done · 242 specs passing · 100% line and branch coverage · 0 RuboCop offenses
+**Status:** all required features done · 246 specs passing · 100% line and branch coverage · 0 RuboCop offenses
 
 ![Ruby 4.0.9](https://img.shields.io/badge/Ruby-4.0.9-CC342D?logo=ruby&logoColor=white)
 ![Rails 8.1](https://img.shields.io/badge/Rails-8.1_API-D30001?logo=rubyonrails&logoColor=white)
@@ -97,7 +97,7 @@ All paths start with `/api/v1`. Serial and card numbers are six-digit strings, l
 | GET | `/readers/{card_number}` | One reader |
 
 - **Status codes:** creates answer `201` with `Location`. Duplicates and unavailable books answer `409`, invalid attributes `422`, malformed requests `400`. A database that is down or busy answers `503` with `Retry-After`.
-- **Errors:** one [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem format for every error, each type explained at [/problems](http://localhost:3000/problems).
+- **Errors:** one [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem format, each type explained at [/problems](http://localhost:3000/problems). The only exception is a body over 10 MB, which the web server refuses with a plain-text `413` before the application runs.
 - **Pagination:** lists take `limit`, 50 by default and at most 100, and `after`; the `Link` header points to the next page.
 - **Health:** `/health/live` checks the process and `/health/ready` the database too.
 
