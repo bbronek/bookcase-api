@@ -24,7 +24,7 @@ step "docker compose up from an empty database"
 docker compose up --detach --build --wait --wait-timeout 180
 
 step "the API is ready and seeded"
-curl --fail --silent "$base/health/ready" | jq --exit-status '.status == "ok"' > /dev/null
+curl --fail --silent "$base/health" | jq --exit-status '.status == "ok"' > /dev/null
 curl --fail --silent "$base/api/v1/books" | jq --exit-status 'length == 5' > /dev/null
 
 step "a book can be added, borrowed and returned"
@@ -72,7 +72,7 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 production="http://localhost:${production_port}"
-curl --fail --silent "$production/health/ready" | jq --exit-status '.status == "ok"' > /dev/null
+curl --fail --silent "$production/health" | jq --exit-status '.status == "ok"' > /dev/null
 [[ $(status_of -X POST "$production/api/v1/books" -H 'Content-Type: application/json' -d '{"serial_number":"900001","title":"Smoke","author":"Test"}') == 201 ]]
 [[ $(status_of -H 'Host: attacker.example' "$production/api/v1/books") == 403 ]]
 for _ in $(seq 1 30); do

@@ -20,7 +20,7 @@ flowchart LR
     subgraph compose["docker compose"]
         direction LR
         migrate["migrate<br/>one-shot db:prepare<br/>schema and seeds"]
-        web["web<br/>Puma + Rails API<br/>healthy when /health/ready answers"]
+        web["web<br/>Puma + Rails API<br/>healthy when /health answers"]
         worker["worker<br/>Solid Queue<br/>scheduler and job workers"]
         db[("db<br/>PostgreSQL 18<br/>domain and queue tables")]
         mails[/"mails volume<br/>delivered emails"/]
@@ -122,8 +122,7 @@ stateDiagram-v2
     Withdrawn --> Withdrawn: borrow 409, withdraw again 204
 
     note right of Withdrawn
-        Still readable with its history,
-        listed with ?status=withdrawn,
+        Off the list, still readable with its history,
         serial number never reused
     end note
 ```

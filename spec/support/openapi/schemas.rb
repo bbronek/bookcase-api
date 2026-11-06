@@ -16,7 +16,7 @@ module OpenAPISchemas
   FULL_NAME = PLAIN_TEXT.merge(example: "Ada Lovelace").freeze
   BOOK = { serial_number: SERIAL_NUMBER, title: PLAIN_TEXT.merge(example: "Dune"), author: PLAIN_TEXT.merge(example: "Frank Herbert") }.freeze
   BOOK_STATE = {
-    status: { type: :string, enum: Book::STATUSES, description: "Derived: withdrawn, else borrowed while a borrowing is open, else available." },
+    status: { type: :string, enum: %w[ available borrowed withdrawn ], description: "Derived: withdrawn, else borrowed while a borrowing is open, else available." },
     withdrawn_at: NULLABLE_TIMESTAMP.merge(description: "When the book left the catalog; null while it is in the catalog."),
     current_borrowing: nullable(:BookBorrowing)
   }.freeze
@@ -57,11 +57,6 @@ module OpenAPISchemas
         items: object({ pointer: { type: :string, example: "#/title" }, detail: { type: :string, example: "can't be blank" } })
       }
     }, optional: %i[ detail instance request_id errors ]),
-    Liveness: object({ status: { type: :string, enum: %w[ ok ] } }),
-    Readiness: object({
-      status: { type: :string, enum: %w[ ok unavailable ] },
-      uptime: { type: :number, description: "Seconds since the process booted." },
-      checks: object({ database: { type: :string, enum: %w[ ok error ] } })
-    })
+    Health: object({ status: { type: :string, enum: %w[ ok unavailable ] } })
   }.freeze
 end

@@ -1,13 +1,6 @@
 module Api
   module V1
     class ReadersController < BaseController
-      include KeysetPagination
-
-      def index
-        page = Membership::ReadersQuery.call(**page_params)
-        render_page page, with: ReaderSerializer
-      end
-
       def show
         reader = Reader.find_by!(card_number: path_parameter(:card_number))
         render_resource reader, with: ReaderSerializer

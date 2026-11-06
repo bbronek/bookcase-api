@@ -4,28 +4,6 @@ RSpec.describe "API v1 readers" do
   let(:ada_json) { { card_number: "100001", full_name: "Ada Lovelace", email: "ada@example.com" } }
 
   path "/api/v1/readers" do
-    get "List readers" do
-      tags "Readers"
-      operationId "listReaders"
-      description "Readers ordered by card number."
-      produces "application/json"
-      page_parameters
-
-      response "200", "A page of readers" do
-        schema type: :array, items: OpenAPISchemas.ref(:Reader)
-        header "Link", schema: { type: :string }, required: false, description: "`<url>; rel=\"next\"` when there is a next page."
-
-        before do
-          create(:reader, card_number: "100002", full_name: "Alan Turing", email: "alan@example.com")
-          create(:reader, card_number: "100001", full_name: "Ada Lovelace", email: "ada@example.com")
-        end
-
-        run_test! do
-          expect(json).to eq([ ada_json, { card_number: "100002", full_name: "Alan Turing", email: "alan@example.com" } ])
-        end
-      end
-    end
-
     post "Register a reader" do
       tags "Readers"
       operationId "registerReader"
@@ -81,18 +59,6 @@ RSpec.describe "API v1 readers" do
       end
 
       problem_response "404", "No reader with this card number", detail: "Reader not found"
-    end
-  end
-
-  describe "GET /api/v1/readers" do
-    it "pages through readers" do
-      create(:reader, card_number: "100001")
-      create(:reader, card_number: "100002")
-
-      get "/api/v1/readers", params: { limit: 1 }
-
-      expect(json.pluck(:card_number)).to eq(%w[ 100001 ])
-      expect(response.headers["Link"]).to eq('</api/v1/readers?after=100001&limit=1>; rel="next"')
     end
   end
 

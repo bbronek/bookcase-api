@@ -103,20 +103,6 @@ RSpec.describe Book do
     end
   end
 
-  describe ".with_status" do
-    it "selects books by their derived status" do
-      available = create(:book)
-      borrowed = create(:borrowing).book
-      returned = create(:borrowing, :returned).book
-      withdrawn = create(:book, :withdrawn)
-
-      expect(described_class.with_status(nil)).to contain_exactly(available, borrowed, returned)
-      expect(described_class.with_status("available")).to contain_exactly(available, returned)
-      expect(described_class.with_status("borrowed")).to contain_exactly(borrowed)
-      expect(described_class.with_status("withdrawn")).to contain_exactly(withdrawn)
-    end
-  end
-
   describe "#status" do
     it "is borrowed while a borrowing is active and available otherwise" do
       book = create(:book)

@@ -11,7 +11,7 @@ Rails.application.configure do
   config.logger = ActiveSupport::TaggedLogging.logger(STDOUT)
   config.log_tags = [ :request_id ]
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
-  config.silence_healthcheck_path = "/health/live"
+  config.silence_healthcheck_path = "/health"
   config.action_dispatch.log_rescued_responses = false
 
   config.active_job.queue_adapter = :solid_queue

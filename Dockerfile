@@ -69,5 +69,5 @@ USER 1000:1000
 
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s \
-  CMD ["ruby", "-rnet/http", "-e", "exit Net::HTTP.get_response(URI('http://localhost:3000/health/live')).is_a?(Net::HTTPSuccess)"]
+  CMD ["ruby", "-rnet/http", "-e", "exit Net::HTTP.get_response(URI('http://localhost:3000/health')).is_a?(Net::HTTPSuccess)"]
 CMD ["bin/rails", "server", "-b", "0.0.0.0", "-P", "/tmp/server.pid"]

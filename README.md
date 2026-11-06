@@ -2,7 +2,7 @@
 
 A JSON API for library staff: keep a catalog of physical books, register readers, lend and take back books with each book's full borrowing history, and email readers three days before a book is due and on the due date.
 
-**Status:** feature-complete · 210 specs · `bin/ci` runs lint, security scans, database checks and the specs · `script/smoke` runs everything in Docker
+**Status:** feature-complete · 205 specs · `bin/ci` runs lint, security scans, database checks and the specs · `script/smoke` runs everything in Docker
 
 ![Ruby 4.0.9](https://img.shields.io/badge/Ruby-4.0.9-CC342D?logo=ruby&logoColor=white)
 ![Rails 8.1](https://img.shields.io/badge/Rails-8.1_API-D30001?logo=rubyonrails&logoColor=white)
@@ -84,20 +84,20 @@ All paths start with `/api/v1`. Serial and card numbers are six-digit strings, l
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/books` | List books with availability and current borrowing; `?status=available`, `borrowed` or `withdrawn` |
+| GET | `/books` | List books with availability and current borrowing |
 | POST | `/books` | Add a book |
 | GET | `/books/{serial_number}` | A book with its full borrowing history |
 | DELETE | `/books/{serial_number}` | Withdraw a book; its history is kept |
 | POST | `/books/{serial_number}/borrowings` | Lend the book to a reader for 30 days |
 | GET | `/borrowings/{id}` | One borrowing |
 | POST | `/borrowings/{id}/return` | Take the book back |
-| GET, POST | `/readers` | List or register readers |
+| POST | `/readers` | Register a reader |
 | GET | `/readers/{card_number}` | One reader |
 
 - **Status codes:** creates answer `201` with `Location`. Duplicates and unavailable books answer `409`, invalid attributes `422`, malformed requests `400`. A database that is down or busy answers `503` with `Retry-After`.
 - **Errors:** one [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem format, each type explained at [/problems](http://localhost:3000/problems). The only exception is a body over 10 MB, which the web server refuses with a plain-text `413` before the application runs.
-- **Pagination:** lists take `limit`, 50 by default and at most 100, and `after`; the `Link` header points to the next page.
-- **Health:** `/health/live` checks the process and `/health/ready` the database too.
+- **Pagination:** `GET /books` takes `limit`, 50 by default and at most 100, and `after`; the `Link` header points to the next page.
+- **Health:** `/health` answers `200` while the database is reachable and `503` otherwise.
 
 **Documentation**
 
@@ -117,7 +117,7 @@ One Rails application in API mode, one PostgreSQL database and one Solid Queue w
 
 ```
 request → app/controllers/api/v1    check the request shape, call one command or query
-        → app/domains                commands change state under row locks; queries page through lists
+        → app/domains                commands change state under row locks; the query pages through the book list
         → app/models + PostgreSQL    validations, and the constraints that back them
         → app/serializers/api/v1     the JSON response
 

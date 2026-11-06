@@ -1,10 +1,7 @@
 Rails.application.routes.draw do
   root to: redirect("/docs", status: 302)
 
-  scope :health, controller: :health, as: :health, format: false do
-    get :live
-    get :ready
-  end
+  get "health", to: "health#show", format: false
 
   namespace :api, format: false do
     namespace :v1 do
@@ -16,7 +13,7 @@ Rails.application.routes.draw do
         resource :return, only: :create, module: :borrowings
       end
 
-      resources :readers, param: :card_number, only: %i[ index show create ]
+      resources :readers, param: :card_number, only: %i[ show create ]
     end
   end
 

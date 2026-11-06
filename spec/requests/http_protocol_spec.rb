@@ -102,7 +102,7 @@ RSpec.describe "HTTP protocol" do
     end
 
     it "answers 400 in the problem format for malformed percent-encoding" do
-      [ "/api/v1/books/%FF", "/api/v1/books?status=%ff", "/api/v1/books?status=%", "/health/ready?x=%ff" ].each do |path|
+      [ "/api/v1/books/%FF", "/api/v1/books?after=%ff", "/api/v1/books?after=%", "/health?x=%ff" ].each do |path|
         get path
 
         expect(response).to be_problem(:bad_request)
@@ -120,10 +120,10 @@ RSpec.describe "HTTP protocol" do
       ])
     end
 
-    it "keeps health probes outside host authorization" do
+    it "keeps the health check outside host authorization" do
       exclude = Rails.application.config.host_authorization.fetch(:exclude)
 
-      expect(exclude.call(ActionDispatch::Request.new(Rack::MockRequest.env_for("/health/ready")))).to be(true)
+      expect(exclude.call(ActionDispatch::Request.new(Rack::MockRequest.env_for("/health")))).to be(true)
       expect(exclude.call(ActionDispatch::Request.new(Rack::MockRequest.env_for("/api/v1/books")))).to be(false)
     end
   end

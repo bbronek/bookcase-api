@@ -23,8 +23,6 @@
 #  books_title_trimmed             (title::text = btrim(title::text))
 #
 class Book < ApplicationRecord
-  STATUSES = %w[ available borrowed withdrawn ].freeze
-
   has_many :borrowings, -> { newest_first }, dependent: :restrict_with_exception, inverse_of: :book
   has_one :current_borrowing, -> { active }, class_name: "Borrowing", dependent: nil, inverse_of: :book
 
@@ -34,15 +32,6 @@ class Book < ApplicationRecord
   validates :title, :author, presence: true, length: { maximum: 255 }, format: PLAIN_TEXT_FORMAT
 
   scope :in_catalog, -> { where(withdrawn_at: nil) }
-  scope :withdrawn, -> { where.not(withdrawn_at: nil) }
-  scope :borrowed, -> { in_catalog.joins(:current_borrowing) }
-  scope :available, -> { in_catalog.where.missing(:current_borrowing) }
-
-  def self.with_status(status)
-    return in_catalog if status.nil?
-
-    { "available" => available, "borrowed" => borrowed, "withdrawn" => withdrawn }.fetch(status)
-  end
 
   def to_param = serial_number
 

@@ -27,7 +27,7 @@ module Bookcase
     config.action_dispatch.rescue_responses["ActionDispatch::Http::MimeNegotiation::InvalidType"] = :bad_request
     config.exceptions_app = Problem.exceptions_app
     config.host_authorization = {
-      exclude: ->(request) { request.path.start_with?("/health/") },
+      exclude: ->(request) { request.path == "/health" },
       response_app: ->(env) { Problem.rack_response(env, 403, detail: "Host not allowed") }
     }
   end

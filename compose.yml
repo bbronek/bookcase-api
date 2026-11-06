@@ -44,7 +44,7 @@ services:
     ports:
       - "127.0.0.1:${PORT:-3000}:3000"
     healthcheck:
-      test: ["CMD", "ruby", "-rnet/http", "-e", "exit Net::HTTP.get_response(URI('http://localhost:3000/health/ready')).is_a?(Net::HTTPSuccess)"]
+      test: ["CMD", "ruby", "-rnet/http", "-e", "exit Net::HTTP.get_response(URI('http://localhost:3000/health')).is_a?(Net::HTTPSuccess)"]
       interval: 5s
       timeout: 3s
       retries: 10

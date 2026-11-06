@@ -21,7 +21,7 @@ Rails.application.configure do
   config.action_controller.raise_on_missing_callback_actions = true
 
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "debug")
-  config.silence_healthcheck_path = "/health/ready"
+  config.silence_healthcheck_path = "/health"
 
   if ENV["RAILS_LOG_TO_STDOUT"].present?
     config.logger = ActiveSupport::Logger.new($stdout).tap { |logger| logger.formatter = Logger::Formatter.new }

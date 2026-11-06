@@ -4,7 +4,7 @@ module Api
       include KeysetPagination
 
       def index
-        page = Catalog::BooksQuery.call(status: status_filter, **page_params)
+        page = Catalog::BooksQuery.call(**page_params)
         render_page page, with: BookSerializer
       end
 
@@ -22,15 +22,6 @@ module Api
       def destroy
         Catalog::WithdrawBook.call(serial_number: path_parameter(:serial_number))
         head :no_content
-      end
-
-      private
-
-      def status_filter
-        status = query_parameter(:status)
-        return status if status.nil? || Book::STATUSES.include?(status)
-
-        raise ActionController::BadRequest, "status must be one of: #{Book::STATUSES.join(', ')}"
       end
     end
   end

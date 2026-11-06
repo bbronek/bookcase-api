@@ -13,11 +13,8 @@ RSpec.describe "API v1 books" do
     get "List books" do
       tags "Books"
       operationId "listBooks"
-      description "Books in the catalog ordered by serial number, with each book's status and current borrowing. " \
-                  "`?status=withdrawn` lists withdrawn books instead."
+      description "Books in the catalog ordered by serial number, with each book's status and current borrowing."
       produces "application/json"
-      parameter name: :status, getter: :status_filter, in: :query, required: false,
-                schema: { type: :string, enum: Book::STATUSES }, description: "Only books in this status."
       page_parameters
 
       before do
@@ -41,9 +38,8 @@ RSpec.describe "API v1 books" do
         end
       end
 
-      problem_response "400", "Unknown status or invalid page parameters",
-                       detail: "status must be one of: available, borrowed, withdrawn" do
-        let(:status_filter) { "lost" }
+      problem_response "400", "Invalid page parameters", detail: "limit must be an integer between 1 and 100" do
+        let(:limit) { 0 }
       end
     end
 
@@ -165,16 +161,16 @@ RSpec.describe "API v1 books" do
       ])
     end
 
-    it "keeps the status filter in the next page link" do
+    it "follows the next link to the last page" do
       create(:book, serial_number: "000001")
       create(:book, serial_number: "000002")
 
-      get "/api/v1/books", params: { status: "available", limit: 1 }
+      get "/api/v1/books", params: { limit: 1 }
 
       expect(json.pluck(:serial_number)).to eq(%w[ 000001 ])
-      expect(response.headers["Link"]).to eq('</api/v1/books?after=000001&limit=1&status=available>; rel="next"')
+      expect(response.headers["Link"]).to eq('</api/v1/books?after=000001&limit=1>; rel="next"')
 
-      get "/api/v1/books", params: { status: "available", limit: 1, after: "000001" }
+      get "/api/v1/books", params: { limit: 1, after: "000001" }
 
       expect(json.pluck(:serial_number)).to eq(%w[ 000002 ])
       expect(response.headers["Link"]).to be_nil
@@ -259,11 +255,14 @@ RSpec.describe "API v1 books" do
   end
 
   describe "DELETE /api/v1/books/{serial_number}" do
-    it "keeps a withdrawn book readable, refuses to lend it and never reuses its serial number" do
+    it "takes a withdrawn book off the list, keeps it readable, refuses to lend it and never reuses its serial number" do
       create(:borrowing, :returned, book: create(:book, **dune))
 
       2.times { delete "/api/v1/books/000001" }
       expect(response).to have_http_status(:no_content)
+
+      get "/api/v1/books"
+      expect(json).to eq([])
 
       get "/api/v1/books/000001"
       expect(json).to include(status: "withdrawn", withdrawn_at: "2026-11-04T09:00:00.000Z", current_borrowing: nil)

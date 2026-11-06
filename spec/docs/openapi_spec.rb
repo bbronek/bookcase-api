@@ -29,12 +29,12 @@ RSpec.describe "OpenAPI document" do
     expect(operations.map { it.last }).to all(include("tags"))
   end
 
-  it "has examples that validate against their own schemas" do
+  it "has an example for every response body, valid against its schema" do
     examples = document["paths"].flat_map do |path, item|
       item.except("parameters").flat_map do |verb, operation|
         operation["responses"].filter_map do |status, response|
           media_type, content = response["content"]&.first
-          next unless content&.key?("example")
+          next unless content
 
           pointer = "#/paths/#{path.gsub('/', '~1')}/#{verb}/responses/#{status}/content/#{media_type.gsub('/', '~1')}/schema"
           [ "#{verb.upcase} #{path} #{status}", openapi.ref(pointer.gsub("{", "%7B").gsub("}", "%7D").gsub("+", "%2B")), content["example"] ]
@@ -42,7 +42,7 @@ RSpec.describe "OpenAPI document" do
       end
     end
 
-    expect(examples.size).to be > 25
+    expect(examples).not_to be_empty
     examples.each do |name, schema, example|
       expect(schema.validate(example).map { it["error"] }).to be_empty, name
     end

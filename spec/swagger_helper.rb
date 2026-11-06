@@ -30,7 +30,7 @@ module SharedOpenAPIResponses
     "/api/v1/books/{serial_number}/borrowings" => { post: MALFORMED.merge(WITH_BODY, ALWAYS) },
     "/api/v1/borrowings/{id}" => { get: MALFORMED.merge(ALWAYS) },
     "/api/v1/borrowings/{id}/return" => { post: MALFORMED.merge(ALWAYS) },
-    "/api/v1/readers" => { get: MALFORMED.merge(ALWAYS), post: MALFORMED.merge(WITH_BODY, ALWAYS) },
+    "/api/v1/readers" => { post: MALFORMED.merge(WITH_BODY, ALWAYS) },
     "/api/v1/readers/{card_number}" => { get: MALFORMED.merge(ALWAYS) }
   }.freeze
 
@@ -80,7 +80,7 @@ RSpec.configure do |config|
         { name: "Books", description: "The catalog. Withdrawing a book keeps its borrowing history." },
         { name: "Borrowings", description: "Lending a book to a reader and taking it back." },
         { name: "Readers", description: "People with a library card." },
-        { name: "Health", description: "Liveness and readiness probes, outside the versioned API." }
+        { name: "Health", description: "The health check, outside the versioned API." }
       ],
       paths: SharedOpenAPIResponses.paths,
       components: { schemas: OpenAPISchemas::ALL, responses: SharedOpenAPIResponses::COMPONENTS }
