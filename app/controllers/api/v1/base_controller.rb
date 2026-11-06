@@ -59,7 +59,7 @@ module Api
       end
 
       def render_resource(resource, with:, status: :ok)
-        render json: with.new(resource).serialize, status:
+        render json: with.new.serialize_to_json(resource), status:
       end
 
       def render_created(record, with:, location:)

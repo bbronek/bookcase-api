@@ -143,6 +143,28 @@ RSpec.describe "API v1 books" do
   end
 
   describe "GET /api/v1/books" do
+    it "returns an empty array when the catalog is empty" do
+      get "/api/v1/books"
+
+      expect(response).to have_http_status(:ok)
+      expect(json).to eq([])
+      expect(response.headers["Link"]).to be_nil
+    end
+
+    it "preserves Unicode, JSON-sensitive text and null associations across a collection" do
+      solaris = { serial_number: "000002", title: "Solaris \"édition\" \\ notes", author: "Stanisław Lem" }
+      create(:book, **dune)
+      create(:book, **solaris)
+
+      get "/api/v1/books"
+
+      expect(response).to have_http_status(:ok)
+      expect(json).to eq([
+        dune.merge(status: "available", withdrawn_at: nil, current_borrowing: nil),
+        solaris.merge(status: "available", withdrawn_at: nil, current_borrowing: nil)
+      ])
+    end
+
     it "keeps the status filter in the next page link" do
       create(:book, serial_number: "000001")
       create(:book, serial_number: "000002")

@@ -2,7 +2,7 @@ module Api
   module V1
     class BookBorrowingSerializer < BaseSerializer
       attributes :id
-      one :reader, resource: ReaderSerializer
+      has_one :reader, serializer: ReaderSerializer
       timestamp :borrowed_at
       attributes :due_on
       timestamp :returned_at

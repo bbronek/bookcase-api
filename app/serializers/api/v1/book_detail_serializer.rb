@@ -1,7 +1,7 @@
 module Api
   module V1
     class BookDetailSerializer < BookSerializer
-      many :borrowings, resource: BookBorrowingSerializer
+      has_many :borrowings, serializer: BookBorrowingSerializer
     end
   end
 end

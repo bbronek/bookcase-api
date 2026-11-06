@@ -26,6 +26,6 @@ module KeysetPagination
       next_page = request.query_parameters.merge("after" => page.next_cursor).to_query
       response.set_header("Link", %(<#{request.path}?#{next_page}>; rel="next"))
     end
-    render_resource page.records, with:
+    render json: Panko::ArraySerializer.new(page.records, each_serializer: with).to_json
   end
 end

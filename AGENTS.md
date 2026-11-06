@@ -4,12 +4,12 @@ Working agreement for humans and coding agents. Update this file when a conventi
 
 ## Scope and structure
 
-Bookcase API: a small library API built with Ruby 4.0.9, Rails 8.1 API mode, PostgreSQL 18, Solid Queue, RSpec, rswag and Alba. Its Rails namespace is `Bookcase`, and its repository folder is `bookcase-api`. Authentication, overdue reminders, extensions, borrowing limits and a frontend are out of scope unless requested.
+Bookcase API: a small library API built with Ruby 4.0.9, Rails 8.1 API mode, PostgreSQL 18, Solid Queue, RSpec, rswag and Panko. Its Rails namespace is `Bookcase`, and its repository folder is `bookcase-api`. Authentication, overdue reminders, extensions, borrowing limits and a frontend are out of scope unless requested.
 
 - `app/controllers/api/v1`: HTTP adapters. Read input through `path_parameter`, `query_parameter` and `body_attributes`; call commands or queries; render serializers.
 - `app/domains`: Catalog, Circulation, Membership and Notifications. Plain command/query classes with keyword arguments and `.call`. Commands return records or raise typed domain errors.
 - `app/models`: associations, validations, normalization, scopes and small rules. Workflows belong in commands.
-- `app/serializers/api/v1`: response shapes. Reuse `ReaderSerializer` for borrowing readers; timestamps use UTC ISO 8601.
+- `app/serializers/api/v1`: Panko response shapes. Reuse `ReaderSerializer` for borrowing readers and `BookSummarySerializer` for a borrowing's book. Timestamps use UTC ISO 8601 with three fractional digits. Render records with `serialize_to_json` and collections with `Panko::ArraySerializer`; create serializers per call, not shared instances.
 - `app/jobs`: thin wrappers for scheduling and delivery. Mailer templates are in `app/views`; dates and subjects use `config/locales/en.yml`.
 - `ProblemDetails` maps application errors to problem JSON. `ErrorsController` answers unmatched routes with 404. `lib/problem.rb` also supports framework exceptions and host authorization.
 - `spec/support/openapi`: schemas, a request-spec DSL and recorded examples. Use public rswag configuration, not formatter patches.

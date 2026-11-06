@@ -88,17 +88,17 @@ paths:
               - serial_number: '000001'
                 title: Dune
                 author: Frank Herbert
-                status: borrowed
                 withdrawn_at:
+                status: borrowed
                 current_borrowing:
                   id: '019a0000-0000-7000-8000-000000000001'
+                  due_on: '2026-12-02'
+                  borrowed_at: '2026-11-02T09:00:00.000Z'
+                  returned_at:
                   reader:
                     card_number: '100001'
                     full_name: Ada Lovelace
                     email: ada@example.com
-                  borrowed_at: '2026-11-02T09:00:00.000Z'
-                  due_on: '2026-12-02'
-                  returned_at:
               schema:
                 type: array
                 items:
@@ -139,8 +139,8 @@ paths:
                 serial_number: '000001'
                 title: Dune
                 author: Frank Herbert
-                status: available
                 withdrawn_at:
+                status: available
                 current_borrowing:
               schema:
                 "$ref": "#/components/schemas/Book"
@@ -204,34 +204,34 @@ paths:
                 serial_number: '000001'
                 title: Dune
                 author: Frank Herbert
-                status: borrowed
                 withdrawn_at:
+                status: borrowed
                 current_borrowing:
                   id: '019a0000-0000-7000-8000-000000000001'
+                  due_on: '2026-12-01'
+                  borrowed_at: '2026-11-01T11:00:00.000Z'
+                  returned_at:
                   reader:
                     card_number: '100002'
                     full_name: Alan Turing
                     email: alan@example.com
-                  borrowed_at: '2026-11-01T11:00:00.000Z'
-                  due_on: '2026-12-01'
-                  returned_at:
                 borrowings:
                 - id: '019a0000-0000-7000-8000-000000000001'
+                  due_on: '2026-12-01'
+                  borrowed_at: '2026-11-01T11:00:00.000Z'
+                  returned_at:
                   reader:
                     card_number: '100002'
                     full_name: Alan Turing
                     email: alan@example.com
-                  borrowed_at: '2026-11-01T11:00:00.000Z'
-                  due_on: '2026-12-01'
-                  returned_at:
                 - id: '019a0000-0000-7000-8000-000000000002'
+                  due_on: '2026-10-01'
+                  borrowed_at: '2026-09-01T08:00:00.000Z'
+                  returned_at: '2026-09-20T14:00:00.000Z'
                   reader:
                     card_number: '100001'
                     full_name: Ada Lovelace
                     email: ada@example.com
-                  borrowed_at: '2026-09-01T08:00:00.000Z'
-                  due_on: '2026-10-01'
-                  returned_at: '2026-09-20T14:00:00.000Z'
               schema:
                 "$ref": "#/components/schemas/BookDetail"
         '404':
@@ -316,13 +316,13 @@ paths:
             application/json:
               example:
                 id: '019a0000-0000-7000-8000-000000000001'
+                due_on: '2026-12-04'
+                borrowed_at: '2026-11-04T09:00:00.000Z'
+                returned_at:
                 reader:
                   card_number: '100001'
                   full_name: Ada Lovelace
                   email: ada@example.com
-                borrowed_at: '2026-11-04T09:00:00.000Z'
-                due_on: '2026-12-04'
-                returned_at:
                 book:
                   serial_number: '000001'
                   title: Dune
@@ -397,13 +397,13 @@ paths:
             application/json:
               example:
                 id: '019a0000-0000-7000-8000-000000000001'
+                due_on: '2026-12-04'
+                borrowed_at: '2026-11-04T09:00:00.000Z'
+                returned_at:
                 reader:
                   card_number: '100001'
                   full_name: Ada Lovelace
                   email: ada@example.com
-                borrowed_at: '2026-11-04T09:00:00.000Z'
-                due_on: '2026-12-04'
-                returned_at:
                 book:
                   serial_number: '000001'
                   title: Dune
@@ -451,13 +451,13 @@ paths:
             application/json:
               example:
                 id: '019a0000-0000-7000-8000-000000000001'
+                due_on: '2026-11-24'
+                borrowed_at: '2026-10-25T09:00:00.000Z'
+                returned_at: '2026-11-04T09:00:00.000Z'
                 reader:
                   card_number: '100001'
                   full_name: Ada Lovelace
                   email: ada@example.com
-                borrowed_at: '2026-10-25T09:00:00.000Z'
-                due_on: '2026-11-24'
-                returned_at: '2026-11-04T09:00:00.000Z'
                 book:
                   serial_number: '000001'
                   title: Dune

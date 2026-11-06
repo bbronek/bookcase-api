@@ -3,7 +3,9 @@ module Api
     class BookSerializer < BaseSerializer
       attributes :serial_number, :title, :author, :status
       timestamp :withdrawn_at
-      one :current_borrowing, resource: BookBorrowingSerializer
+      has_one :current_borrowing, serializer: BookBorrowingSerializer
+
+      delegate :status, to: :object
     end
   end
 end

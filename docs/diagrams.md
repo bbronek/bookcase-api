@@ -43,7 +43,7 @@ sequenceDiagram
     participant Ctl as API v1 controller
     participant Cmd as Circulation BorrowBook
     participant DB as PostgreSQL
-    participant S as Alba serializer
+    participant S as Panko serializer
     participant P as ProblemDetails
 
     C->>Ctl: POST /api/v1/books/000001/borrowings

@@ -6,7 +6,7 @@ gem "rails", "~> 8.1.4"
 gem "pg", "~> 1.7"
 gem "puma", "~> 8.0"
 gem "bootsnap", require: false
-gem "alba", "~> 4.0"
+gem "panko_serializer", "~> 0.8.5"
 gem "solid_queue", "~> 1.7"
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 

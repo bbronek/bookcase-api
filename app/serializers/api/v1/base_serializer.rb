@@ -1,10 +1,9 @@
 module Api
   module V1
-    class BaseSerializer
-      include Alba::Resource
-
+    class BaseSerializer < Panko::Serializer
       def self.timestamp(*names)
-        names.each { |name| attribute(name) { |record| record.public_send(name)&.utc&.iso8601(3) } }
+        attributes(*names)
+        names.each { |name| define_method(name) { object.public_send(name)&.utc&.iso8601(3) } }
       end
     end
   end

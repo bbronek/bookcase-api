@@ -84,7 +84,7 @@ One Rails application and one PostgreSQL database, shared by application data an
 | `app/controllers/api/v1` | Validate request shapes, call a use case, render HTTP |
 | `app/domains` | Commands for writes; queries for lists, grouped by catalog, circulation, membership and notifications |
 | `app/models` | Associations, normalization, validations and small domain rules |
-| `app/serializers/api/v1` | Explicit JSON shapes through Alba |
+| `app/serializers/api/v1` | Explicit JSON shapes through Panko |
 | `app/jobs`, `app/mailers` | Queue scheduling and email delivery through Action Mailer |
 
 Start with [BorrowBook](app/domains/circulation/borrow_book.rb), the [race tests](spec/integration/concurrency_spec.rb) and [request specs](spec/requests/api/v1/books_spec.rb). [Diagrams](docs/diagrams.md) show the flows.
@@ -92,7 +92,7 @@ Start with [BorrowBook](app/domains/circulation/borrow_book.rb), the [race tests
 - **Model the borrowing, not a mutable status flag.** Availability comes from the active borrowing. Returning by borrowing id prevents a repeated old return from closing a newer checkout.
 - **Withdraw rather than erase.** History is part of the brief. A withdrawn book remains readable but cannot be lent; its serial number is never reused. Borrowed books must be returned before withdrawal.
 - **Let PostgreSQL enforce invariants.** Unique identifiers, foreign keys and checks protect stored data. A partial unique index allows one active borrowing per book. Row locks make borrow, withdraw and return safe under competing requests; real two-connection tests verify this.
-- **Keep HTTP out of workflows.** Commands return records or raise specific errors; one concern maps errors to HTTP responses. Queries preload associations; Alba defines response shapes.
+- **Keep HTTP out of workflows.** Commands return records or raise specific errors; one concern maps errors to HTTP responses. Queries preload associations; Panko defines response shapes and encodes them directly to JSON using Oj.
 - **Record delivery, not enqueueing.** An hourly 09:00–21:00 Warsaw scheduler queues pending reminders. A unique borrowing/kind pair and queue concurrency control prevent ordinary duplicate deliveries. `sent_at` is written only after delivery succeeds; transient failures retry. Missed three-day reminders can catch up before the due date.
 
 ## Checks and local development

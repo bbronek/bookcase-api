@@ -145,6 +145,17 @@ RSpec.describe "API v1 borrowings" do
   end
 
   describe "GET /api/v1/borrowings/{id}" do
+    it "renders timestamps in UTC with millisecond precision" do
+      borrowing = borrow_dune(borrowed_at: Time.iso8601("2026-10-01T10:00:00.123456+02:00"))
+      Circulation::ReturnBook.call(borrowing_id: borrowing.id, returned_at: Time.iso8601("2026-10-20T16:00:00.987654+02:00"))
+
+      get "/api/v1/borrowings/#{borrowing.id}"
+
+      expect(response).to have_http_status(:ok)
+      expect(json).to eq(borrowing_json(borrowing, borrowed_at: "2026-10-01T08:00:00.123Z", due_on: "2026-10-31",
+                                                 returned_at: "2026-10-20T14:00:00.987Z"))
+    end
+
     it "answers 404 for ids that are not UUIDs" do
       get "/api/v1/borrowings/42"
 
