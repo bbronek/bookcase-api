@@ -42,6 +42,7 @@ FROM base AS development
 ENV RAILS_ENV="development"
 COPY --from=development-gems "${BUNDLE_PATH}" "${BUNDLE_PATH}"
 COPY --chown=1000:1000 . .
+RUN chown 1000:1000 /app
 USER 1000:1000
 RUN mkdir -p tmp/mails
 
