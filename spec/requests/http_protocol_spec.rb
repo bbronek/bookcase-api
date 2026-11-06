@@ -30,8 +30,16 @@ RSpec.describe "HTTP protocol" do
       end
     end
 
+    it "answers 400 for a body that is not valid UTF-8, in a key or a value" do
+      [ "{\"\xFF\":\"x\"}", "{\"title\":\"\xFF\"}" ].each do |body|
+        post "/api/v1/books", params: body, headers: { "Content-Type" => "application/json" }
+
+        expect(response).to be_problem(:bad_request, detail: "Request body must be valid UTF-8")
+      end
+    end
+
     it "answers 400 for bodies that are not valid JSON" do
-      [ '{"title":', "{\"title\":\"\xFF\"}", "#{'[' * 200}#{']' * 200}" ].each do |body|
+      [ '{"title":', "#{'[' * 200}#{']' * 200}" ].each do |body|
         post "/api/v1/books", params: body, headers: { "Content-Type" => "application/json" }
 
         expect(response).to be_problem(:bad_request)
