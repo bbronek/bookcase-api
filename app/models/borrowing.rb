@@ -13,6 +13,7 @@
 #
 # Indexes
 #
+#  index_borrowings_on_active_book    (book_id) UNIQUE WHERE (returned_at IS NULL)
 #  index_borrowings_on_book_history   (book_id,borrowed_at DESC,id DESC)
 #  index_borrowings_on_due_on_active  (due_on) WHERE (returned_at IS NULL)
 #  index_borrowings_on_reader_id      (reader_id)
@@ -26,10 +27,6 @@
 #
 #  borrowings_due_after_borrowed       (due_on > (borrowed_at AT TIME ZONE 'Europe/Warsaw'::text)::date)
 #  borrowings_returned_after_borrowed  (returned_at IS NULL OR returned_at >= borrowed_at)
-#
-# Exclusion Constraints
-#
-#  borrowings_of_a_book_never_overlap  (book_id WITH =, tstzrange(borrowed_at, returned_at) WITH &&) USING gist
 #
 class Borrowing < ApplicationRecord
   PERIOD = 30.days

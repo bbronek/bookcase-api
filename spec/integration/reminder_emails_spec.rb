@@ -45,13 +45,4 @@ RSpec.describe "Reminder emails" do
 
     expect(subjects.size).to eq(1)
   end
-
-  it "never tries an address again once the mail server says it does not exist" do
-    allow(ActionMailer::Base).to receive(:deliver_mail).and_raise(Net::SMTPFatalError, "550 5.1.1 User unknown")
-
-    hourly_runs_on(Date.new(2026, 12, 1))
-    hourly_runs_on(Date.new(2026, 12, 2))
-
-    expect(ActionMailer::Base).to have_received(:deliver_mail).once
-  end
 end

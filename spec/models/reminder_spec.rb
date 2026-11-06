@@ -19,10 +19,6 @@ RSpec.describe Reminder do
       expect { insert(kind: "overdue") }.to raise_error(ActiveRecord::StatementInvalid, /invalid input value for enum reminder_kind/)
     end
 
-    it "never records a reminder as both sent and failed" do
-      expect { insert(sent_at: Time.current, failed_at: Time.current) }.to raise_error(ActiveRecord::CheckViolation, /reminders_sent_or_failed/)
-    end
-
     it "rejects a borrowing that does not exist" do
       expect { insert(borrowing_id: SecureRandom.uuid_v7) }.to raise_error(ActiveRecord::InvalidForeignKey)
     end
@@ -48,7 +44,6 @@ RSpec.describe Reminder do
       expect(due_soon).to be_deliverable
 
       expect(build(:reminder, :sent, borrowing:)).not_to be_deliverable
-      expect(build(:reminder, :failed, borrowing:)).not_to be_deliverable
 
       borrowing.returned_at = Time.current
       expect(due_soon).not_to be_deliverable
@@ -73,13 +68,10 @@ RSpec.describe Reminder do
     end
   end
 
-  it "is pending until it is sent or the mail server rejects the address" do
-    sent, failed = create_list(:reminder, 2)
+  it "is pending until it is sent" do
+    reminder = create(:reminder)
 
-    expect {
-      sent.update!(sent_at: Time.current)
-      failed.update!(failed_at: Time.current)
-    }.to change { described_class.pending.count }.from(2).to(0)
-    expect([ sent, failed ]).to all(satisfy { !it.pending? })
+    expect { reminder.update!(sent_at: Time.current) }.to change { described_class.pending.count }.from(1).to(0)
+    expect(reminder).not_to be_pending
   end
 end

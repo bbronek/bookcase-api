@@ -13,7 +13,7 @@ RSpec.describe Notifications::DeliverReminder do
     deliver
 
     expect(ActionMailer::Base.deliveries.map(&:to)).to eq([ [ "ada@example.com" ] ])
-    expect(reminder.reload).to have_attributes(sent_at: Time.current, failed_at: nil)
+    expect(reminder.reload).to have_attributes(sent_at: Time.current)
   end
 
   context "with a due-today reminder" do
@@ -34,14 +34,10 @@ RSpec.describe Notifications::DeliverReminder do
     expect(ActionMailer::Base.deliveries).to be_empty
   end
 
-  it "marks the reminder failed when the mail server does not know the address, and keeps the address out of the log" do
+  it "surfaces a rejected address and leaves the reminder pending" do
     mail_server_replies(Net::SMTPFatalError, "550 5.1.1 <ada@example.com>: Recipient address rejected: User unknown")
-    allow(Rails.logger).to receive(:warn)
-
-    deliver
-
-    expect(reminder.reload).to be_failed
-    expect(Rails.logger).to have_received(:warn).with("Reminder #{reminder.id} failed: the mail server does not know the reader's address")
+    expect { deliver }.to raise_error(Net::SMTPFatalError)
+    expect(reminder.reload).to be_pending
   end
 
   it "keeps the reminder pending when the mail server refuses for a reason it can fix, such as a rejected sender or relay" do

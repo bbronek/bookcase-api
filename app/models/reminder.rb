@@ -3,7 +3,6 @@
 # Table name: reminders
 #
 #  id           :uuid             not null, primary key
-#  failed_at    :datetime
 #  kind         :enum             not null, enum_type: reminder_kind
 #  sent_at      :datetime
 #  created_at   :datetime         not null
@@ -17,10 +16,6 @@
 # Foreign Keys
 #
 #  fk_rails_...  (borrowing_id => borrowings.id)
-#
-# Check Constraints
-#
-#  reminders_sent_or_failed  (sent_at IS NULL OR failed_at IS NULL)
 #
 # Enums
 #
@@ -37,13 +32,11 @@ class Reminder < ApplicationRecord
 
   enum :kind, { due_soon: "due_soon", due_today: "due_today" }, validate: true
 
-  scope :pending, -> { where(sent_at: nil, failed_at: nil) }
+  scope :pending, -> { where(sent_at: nil) }
 
   def sent? = sent_at?
 
-  def failed? = failed_at?
-
-  def pending? = !sent? && !failed?
+  def pending? = !sent?
 
   def self.due_dates(kind, today: Time.zone.today) = DUE_DATES.fetch(kind).call(today)
 

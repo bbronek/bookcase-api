@@ -47,14 +47,12 @@ RSpec.describe Notifications::ScheduleDueReminders do
 
   it "keeps one reminder per borrowing and kind, and queues only the pending ones" do
     sent = borrowing_due_on(today + 1)
-    rejected = borrowing_due_on(today + 2)
     pending = borrowing_due_on(today + 3)
     schedule
 
     Reminder.find_by!(borrowing: sent).update!(sent_at: Time.current)
-    Reminder.find_by!(borrowing: rejected).update!(failed_at: Time.current)
 
     expect(schedule.map(&:borrowing)).to eq([ pending ])
-    expect(Reminder.count).to eq(3)
+    expect(Reminder.count).to eq(2)
   end
 end

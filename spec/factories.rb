@@ -42,9 +42,5 @@ FactoryBot.define do
     trait :sent do
       sent_at { Time.current }
     end
-
-    trait :failed do
-      failed_at { Time.current }
-    end
   end
 end

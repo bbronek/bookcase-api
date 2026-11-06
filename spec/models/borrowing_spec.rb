@@ -44,17 +44,10 @@ RSpec.describe Borrowing do
       expect { insert(borrowed_at: 10.days.ago) }.not_to raise_error
     end
 
-    it "never lets two borrowings of the same book overlap in time" do
-      insert(borrowed_at: 30.days.ago, returned_at: 10.days.ago)
-
-      expect { insert(borrowed_at: 20.days.ago, returned_at: 15.days.ago) }
-        .to raise_error(ActiveRecord::ExclusionViolation, /borrowings_of_a_book_never_overlap/)
-    end
-
-    it "allows only one active borrowing per book, because an open borrowing overlaps every later one" do
+    it "allows only one active borrowing per book" do
       insert(borrowed_at: 5.days.ago)
 
-      expect { insert(borrowed_at: 1.day.ago) }.to raise_error(ActiveRecord::ExclusionViolation, /borrowings_of_a_book_never_overlap/)
+      expect { insert(borrowed_at: 1.day.ago) }.to raise_error(ActiveRecord::RecordNotUnique, /index_borrowings_on_active_book/)
     end
 
     {

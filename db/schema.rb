@@ -10,9 +10,8 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_04_100400) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_06_170000) do
   # These are extensions that must be enabled in order to support this database
-  enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
 
   # Custom types defined in this database.
@@ -41,11 +40,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_100400) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["book_id", "borrowed_at", "id"], name: "index_borrowings_on_book_history", order: { borrowed_at: :desc, id: :desc }
+    t.index ["book_id"], name: "index_borrowings_on_active_book", unique: true, where: "(returned_at IS NULL)"
     t.index ["due_on"], name: "index_borrowings_on_due_on_active", where: "(returned_at IS NULL)"
     t.index ["reader_id"], name: "index_borrowings_on_reader_id"
     t.check_constraint "due_on > (borrowed_at AT TIME ZONE 'Europe/Warsaw'::text)::date", name: "borrowings_due_after_borrowed"
     t.check_constraint "returned_at IS NULL OR returned_at >= borrowed_at", name: "borrowings_returned_after_borrowed"
-    t.exclusion_constraint "book_id WITH =, tstzrange(borrowed_at, returned_at) WITH &&", using: :gist, name: "borrowings_of_a_book_never_overlap"
   end
 
   create_table "readers", id: :uuid, default: -> { "uuidv7()" }, force: :cascade do |t|
@@ -65,11 +64,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_04_100400) do
     t.uuid "borrowing_id", null: false
     t.enum "kind", null: false, enum_type: "reminder_kind"
     t.datetime "sent_at"
-    t.datetime "failed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["borrowing_id", "kind"], name: "index_reminders_on_borrowing_id_and_kind", unique: true
-    t.check_constraint "sent_at IS NULL OR failed_at IS NULL", name: "reminders_sent_or_failed"
   end
 
   create_table "solid_queue_batch_executions", force: :cascade do |t|

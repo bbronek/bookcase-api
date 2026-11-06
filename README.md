@@ -34,7 +34,9 @@ Commands in `app/domains` own writes and transactions; controllers translate HTT
 
 Availability is derived from the active borrowing. Returns target a borrowing id, so a repeated old return cannot close a newer borrowing. Withdrawals keep history and reserve the serial number. History includes the reader's card number, full name and email. UUIDv7 identifies internal records; staff use serial and card numbers.
 
-Borrowings last 30 calendar days in Europe/Warsaw. An hourly daytime scheduler queues reminder deliveries separately, three days before the due date and on the due date. Due-soon reminders can catch up before the due date. Transient failures retry; rejected recipient addresses are recorded as failed. Sending and recording delivery are not atomic, so a crash between them can duplicate an email. Authentication is omitted for this task.
+Borrowings last 30 calendar days in Europe/Warsaw. An hourly daytime scheduler queues reminder deliveries separately, three days before the due date and on the due date. Due-soon reminders can catch up before the due date. Reminders remain pending until sent; temporary failures retry and other failures surface through the job backend. Sending and recording delivery are not atomic, so a crash between them can duplicate an email. Authentication is omitted for this task.
+
+The simplification migration replaces historical overlap exclusion with one-active-borrowing uniqueness and removes reminder failure timestamps. It preserves borrowings and reminders, but cannot restore the old failure timestamps on rollback. Previously failed reminders may retry within their delivery window; rollback requires non-overlapping borrowing history.
 
 ## Checks
 
