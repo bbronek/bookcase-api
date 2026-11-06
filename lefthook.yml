@@ -1,0 +1,24 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: rubocop
+      glob: ["*.{rb,rake,ru}", "Gemfile", "Rakefile", "bin/*"]
+      run: bin/rubocop --force-exclusion {staged_files}
+    - name: hadolint
+      glob: Dockerfile
+      run: docker run --rm -i -v ./.hadolint.yaml:/.config/hadolint.yaml hadolint/hadolint:v2.15.1 < Dockerfile
+
+commit-msg:
+  jobs:
+    - name: conventional commits
+      run: |
+        head -1 {1} | grep -qE '^((build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9-]+\))?!?: .+|Merge |Revert "|fixup! |squash! )' \
+          || { echo "Use Conventional Commits, for example: fix: reject NUL bytes"; exit 1; }
+
+pre-push:
+  piped: true
+  jobs:
+    - name: rspec
+      run: COVERAGE=1 bundle exec rspec --format progress
+    - name: openapi document is up to date
+      run: script/docs > /dev/null && git diff --exit-code HEAD -- public/openapi/v1.yaml
