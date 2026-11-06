@@ -7,7 +7,7 @@ Instructions for AI coding agents working in this repository. Update this file i
 Bookcase API: a small library API built with Ruby 4.0.9, Rails 8.1 API mode, PostgreSQL 18, Solid Queue, RSpec, rswag and Panko. Its Rails namespace is `Bookcase`, and its repository folder is `bookcase-api`. Authentication, overdue reminders, extensions, borrowing limits and a frontend are out of scope unless requested.
 
 - `app/controllers/api/v1`: HTTP adapters. Read input through `path_parameter`, `query_parameter` and `body_attributes`; call commands or queries; render serializers.
-- `app/domains`: Catalog, Circulation, Membership and Notifications. Plain command/query classes with keyword arguments and `.call`. Commands return records or raise typed domain errors. An error raised by one command is nested in it (`Catalog::AddBook::SerialNumberTaken`); an error raised by several has its own file (`Catalog::BookWithdrawn`, `Circulation::BookBorrowed`).
+- `app/domains`: Catalog, Circulation, Membership and Notifications. Plain command/query classes with keyword arguments and `.call`. Commands that create or change a record return it, and raise typed domain errors on failure. An error raised only by its own command is nested in it (`Catalog::AddBook::SerialNumberTaken`); an error raised by several commands, or by another area's command, has its own file (`Circulation::BookBorrowed`; `Catalog::BookWithdrawn`, raised by `Circulation::BorrowBook`). `domain_error.rb` holds the error base classes and `page.rb` the keyset page every list query returns.
 - `app/models`: associations, validations, normalization, scopes and small rules. Workflows belong in commands.
 - `app/serializers/api/v1`: Panko response shapes. Reuse `ReaderSerializer` for borrowing readers and `BookSummarySerializer` for a borrowing's book. Timestamps use UTC ISO 8601 with three fractional digits. Render records with `serialize_to_json` and collections with `Panko::ArraySerializer`; create serializers per call, not shared instances.
 - `app/jobs`: thin wrappers for scheduling and delivery. Mailer templates are in `app/views`; dates and subjects use `config/locales/en.yml`.
@@ -15,7 +15,7 @@ Bookcase API: a small library API built with Ruby 4.0.9, Rails 8.1 API mode, Pos
 - `spec/support/openapi`: schemas, a request-spec DSL and recorded examples. Use public rswag configuration, not formatter patches.
 - `public/docs/index.html`: Scalar mounted on `#app`. Never use the id `api-reference`: Scalar's standalone script auto-mounts a second, empty reference on it.
 - `db/migrate`: forward schema changes. `db/schema.rb` and model schema annotations are generated.
-- `spec`: `models` for validations and database guards, `domains` for commands, `requests/api/v1` for endpoints and the OpenAPI document, `integration` for races and the reminder lifecycle, `jobs`, `mailers` and `docs`.
+- `spec`: `models` for validations and database guards, `domains` for commands, `requests/api/v1` for endpoints and the OpenAPI document, `requests/http_protocol_spec.rb` and `requests/health_spec.rb` for HTTP-level behaviour, `integration` for races and the reminder lifecycle, `jobs`, `mailers`, `db` for the seeds and `docs` for the OpenAPI document and problem types.
 
 `README.md` explains the design decisions and `docs/diagrams.md` the flows; read them before changing behaviour.
 
@@ -28,7 +28,7 @@ bundle exec rspec              # the suite
 COVERAGE=1 bundle exec rspec   # the suite with the 100% coverage gate
 bin/rubocop                    # lint
 script/docs                    # regenerate public/openapi/v1.yaml from the request specs
-bin/ci                         # every CI check; run before pushing
+bin/ci                         # lint, security, database, specs and docs; run before pushing
 script/smoke                   # Docker end to end, takes minutes; run after Docker or deployment changes
 bundle exec annotaterb models  # refresh model schema annotations after a migration
 ```
@@ -40,19 +40,19 @@ A change is complete when lint and the full coverage-gated suite pass, affected 
 ## Business and API rules
 
 - Serial numbers and card numbers are unique six-digit strings. Emails are trimmed, lower-cased and unique. Text is trimmed, length-limited, has a visible character and no control characters. The model trims all Unicode whitespace and requires a letter, digit, punctuation mark or symbol; PostgreSQL enforces the ASCII part, because its character classes depend on the server locale. Use Ruby's built-in email regex.
-- Rails validates unique identifiers, one active borrowing per book, one reminder per borrowing/kind, required fields and date ordering. PostgreSQL backs these rules with unique indexes, foreign keys, NOT NULL and CHECK constraints. Each CHECK, unique index, enum and column length has a spec bypassing validations; `database_consistency` in `bin/ci` proves every NOT NULL column and foreign key matches its validation, so those get no spec. Historical interval overlap is not database-enforced.
+- Rails validates unique identifiers, one active borrowing per book, one reminder per borrowing/kind, required fields and date ordering. PostgreSQL backs these rules with unique indexes, foreign keys, NOT NULL and CHECK constraints. Each CHECK, unique index, enum and column length has a spec bypassing validations; `database_consistency` in `bin/ci` proves every NOT NULL column and foreign key matches its validation, so those get no spec. The guard against deleting a reader with borrowings is behaviour and keeps its spec. Historical interval overlap is not database-enforced.
 - Ruby's email regex validates full syntax; PostgreSQL enforces normalized, nonempty `local@domain` shape without whitespace or control characters. Do not duplicate the full email parser in SQL.
 - Status is derived from borrowings; never add a status column.
 - Books are withdrawn, not destroyed. The book list starts from `Book.in_catalog`. Withdrawn books remain readable, cannot be lent and retain their serial numbers.
 - Borrow and withdraw lock the book before checking state. Return locks the borrowing. Read `Time.current` after acquiring locks. Keep real two-connection race tests.
 - Creates return 201 with Location. Duplicate serials, cards and emails return 409 even for identical requests. Borrowing an already borrowed book returns 409 for any reader. Return and withdrawal remain idempotent.
 - Duplicate inserts run in a `requires_new` transaction and rescue uniqueness errors outside it, preserving a caller's transaction after a conflict. Commands map uniqueness validation failures to the same 409 conflicts; other invalid attributes remain 422. Keep the database-error path for concurrent inserts that both pass validation.
-- Application errors use `application/problem+json`. New conflict types need matching anchors in `public/problems/index.html`. Invalid attributes use `validation-failed` and 422; malformed request shapes or invalid query values use 400. The only plain-text error is Puma's 413 for a body over 10 MB.
+- Application errors use `application/problem+json`. New conflict types need matching anchors in `public/problems/index.html`. Invalid attributes use `validation-failed` and 422; malformed request shapes or invalid query values use 400. The only non-JSON error is Puma's bare 413 for a body over 10 MB: the text `Payload Too Large` with no `Content-Type`.
 - Keep input validation at the boundary: JSON object bodies, string attributes and valid query shapes. Strong parameters select attributes; they do not validate their types.
 - Reminders are unique per borrowing and kind, pending until `sent_at` is set after delivery. Skip sent reminders, returned borrowings and expired delivery windows. Keep per-reminder queue concurrency control and bounded transient retries. Other failures surface through the job backend and remain pending.
 - Do not promise exactly-once email: a crash between sending and recording success can duplicate delivery. Pending reminders are retried only within their delivery window.
 - Do not add application logging of email addresses or SMTP replies. Active Job's failure logs may contain transport replies.
-- Time zone changes must update both `config/application.rb` and the borrowing date constraint through a migration.
+- Time zone changes must update `config/application.rb`, the schedule in `config/recurring.yml`, the borrowing date constraint through a migration, and the zone named in the OpenAPI descriptions, README and diagrams.
 
 ## Testing and tooling
 
@@ -66,7 +66,7 @@ Keep security checks, database consistency, OpenAPI validation, Docker smoke tes
 
 Use Omakase layout, double quotes, two-space indentation and `%i[ a b ]`. Endless methods suit single expressions; longer logic uses regular methods. Prefer keyword arguments with shorthand. Use the vocabulary book, reader, borrowing, reminder, withdraw, borrow and return.
 
-No code/configuration comments except generated annotations, shebangs and Docker directives; explain decisions in documentation. Autocorrect only with `bin/rubocop -a --except Layout/LineLength`; wrap long application lines manually. Specs may use longer lines for complete expected bodies, and generated annotation lines may exceed the limit.
+No code/configuration comments except generated annotations, shebangs, Docker directives and the version comments beside pinned GitHub Action SHAs; explain decisions in documentation. Autocorrect only with `bin/rubocop -a --except Layout/LineLength`; wrap long application lines manually. Specs may use longer lines for complete expected bodies, and generated annotation lines may exceed the limit.
 
 Keep changes scoped. Add request specs and regenerate docs for endpoints or response fields. Add database and model specs for stored-data rules. Read a required production setting with `ENV.fetch`, so boot fails without it, and list it in the README's production section. Breaking API changes after the first release need a new version under `/api/v2`.
 

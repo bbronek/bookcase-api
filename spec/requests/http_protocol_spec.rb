@@ -48,7 +48,7 @@ RSpec.describe "HTTP protocol" do
   end
 
   describe "request ids" do
-    it "puts an X-Request-Id on every response, errors included, so a report can be matched to the logs" do
+    it "puts an X-Request-Id on every API response, errors included, so a report can be matched to the logs" do
       [ "/api/v1/books", "/api/v1/books/999999", "/nope" ].each do |path|
         get path
 

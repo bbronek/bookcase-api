@@ -11,8 +11,8 @@ module SharedOpenAPIResponses
     BadRequest: problem("Malformed request, such as invalid JSON or UTF-8, a body that is not a JSON object, or an invalid query value"),
     UnsupportedMediaType: problem("The request body is not `application/json`"),
     ContentTooLarge: {
-      description: "The body is over 10 MB; the web server refuses it in plain text before the application runs",
-      content: { "text/plain" => { schema: { type: :string } } }
+      description: "The body is over 10 MB; the web server refuses it before the application runs, with the text " \
+                   "`Payload Too Large` and no Content-Type"
     },
     ServiceUnavailable: problem(
       "The database is down, or a lock wait or statement timed out",
@@ -65,12 +65,12 @@ RSpec.configure do |config|
 
           ## Conventions
 
-          - **Versioning.** Every endpoint lives under `/api/v1`. Additive changes ship in v1; a breaking change
+          - **Versioning.** Every endpoint except `/health` lives under `/api/v1`. Additive changes ship in v1; a breaking change
             gets `/api/v2`. Clients must ignore fields they do not know.
           - **Identifiers.** Books are addressed by their six-digit serial number, readers by their six-digit card
             number and borrowings by a UUID.
           - **Requests.** Bodies are JSON objects sent as `application/json` in UTF-8. Another media type answers
-            `415` and a malformed body `400`. The web server refuses bodies over 10 MB with a plain-text `413`.
+            `415` and a malformed body `400`. The web server refuses bodies over 10 MB with a bare `413`, not JSON.
           - **Status codes.** `201` with `Location` for a create, `404` for an unknown resource, `405` with `Allow`
             for an unsupported method, `409` for a conflict, `422` for invalid attributes, and `503` with
             `Retry-After` while the database is down or busy.
@@ -85,9 +85,10 @@ RSpec.configure do |config|
             (1 to 100, default 50) and `after`. The next page is in the `Link: <...>; rel="next"` header.
           - **Time.** Timestamps are UTC, RFC 3339 with milliseconds. Due dates are calendar dates in the library's
             time zone, Europe/Warsaw.
-          - **Concurrency.** Writes to one book are serialized by a row lock, so a book has at most one active
-            borrowing. A lock wait over 2 s or a statement over 5 s answers `503` with `Retry-After`.
-          - **Request ids.** Every response has an `X-Request-Id` header, and production logs are tagged with it.
+          - **Concurrency.** Borrowing and withdrawing lock the book, returning locks the borrowing, and a unique
+            index allows one active borrowing per book. A lock wait over 2 s or a statement over 5 s answers `503`
+            with `Retry-After`.
+          - **Request ids.** Every API response, errors included, has an `X-Request-Id` header, and production logs are tagged with it.
             Quote it when reporting a problem.
           - **Authentication** is out of scope for this version.
         MARKDOWN

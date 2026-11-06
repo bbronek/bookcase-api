@@ -11,7 +11,7 @@ How the Bookcase API fits together. The [README](../README.md) explains the deci
 
 ## Services
 
-What `docker compose up` starts. `web` and `worker` wait for `migrate`, which waits for a healthy database. Only `127.0.0.1` can reach the published ports. The `mails` volume is mounted in every app container, so `docker compose exec web cat tmp/mails/*` shows what the worker wrote.
+What `docker compose up` starts. `web` and `worker` wait for `migrate`, which waits for a healthy database. Only `127.0.0.1` can reach the published ports. The `mails` volume is mounted in every app container, so `docker compose exec web sh -c 'cat tmp/mails/*'` shows what the worker wrote.
 
 ```mermaid
 flowchart LR
@@ -170,7 +170,7 @@ sequenceDiagram
         D->>M: due_soon or due_today, text and HTML
         alt delivered
             D->>DB: UPDATE sent_at
-        else timeout or busy server
+        else timeout, connection error or busy server
             D-->>Q: retry with backoff, up to 5 attempts, then the next run
         else any other failure
             D-->>Q: fail loudly, next eligible run tries again

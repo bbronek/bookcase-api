@@ -48,7 +48,7 @@ bin/jobs                     # in a second terminal, for the reminder emails
 ```bash
 bundle exec rspec            # needs the database from "Run locally"
 bin/rubocop
-bin/ci                       # every CI check: lint, security, database, specs and docs
+bin/ci                       # lint, security, database, specs and docs; CI also runs script/smoke
 ```
 
 Without a local Ruby, the suite runs inside the container: `docker compose exec web sh -c 'bin/rails db:test:prepare && bundle exec rspec'`.
@@ -101,8 +101,8 @@ All paths start with `/api/v1`. Serial and card numbers are six-digit strings, l
 | POST | `/readers` | Register a reader |
 | GET | `/readers/{card_number}` | One reader |
 
-- **Status codes:** creates answer `201` with `Location`. Unknown resources answer `404`, duplicates and unavailable books `409`, invalid attributes `422`, malformed requests `400`, and an unsupported method on an existing path `405` with `Allow`. A database that is down or busy answers `503` with `Retry-After`.
-- **Errors:** one [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem format, each type explained at [/problems](http://localhost:3000/problems). The only exception is a body over 10 MB, which the web server refuses with a plain-text `413` before the application runs. Every response carries an `X-Request-Id` header to quote when reporting a problem.
+- **Status codes:** creates answer `201` with `Location`. Unknown resources answer `404`, duplicates and unavailable books `409`, invalid attributes `422`, malformed requests `400`, a body that is not JSON `415`, and an unsupported method on an existing path `405` with `Allow`. A database that is down or busy answers `503` with `Retry-After`.
+- **Errors:** one [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem format, each type explained at [/problems](http://localhost:3000/problems). The only exception is a body over 10 MB, which the web server refuses with a bare `413` before the application runs. API responses carry an `X-Request-Id` header to quote when reporting a problem.
 - **Pagination:** `GET /books` takes `limit`, 50 by default and at most 100, and `after`; the `Link` header points to the next page.
 - **Health:** `/health` answers `200` while the database is reachable and `503` otherwise.
 
@@ -124,7 +124,7 @@ One Rails application in API mode, one PostgreSQL database and one Solid Queue w
 
 ```
 request → app/controllers/api/v1    check the request shape, call one command or query
-        → app/domains                commands change state under row locks; the query pages through the book list
+        → app/domains                commands change state under row locks or unique indexes; the query pages the book list
         → app/models + PostgreSQL    validations, and the constraints that back them
         → app/serializers/api/v1     the JSON response
 
@@ -161,7 +161,7 @@ spec/requests/api/v1/                    request specs that also generate the AP
 | A borrowing is its own resource, returned by its id | The history comes for free, and a repeated old return can never close a newer borrowing | A status column on books, or `POST /books/{serial_number}/return` |
 | Withdraw instead of delete | The brief asks for each book's full history, which a delete would erase | Destroying the book, or refusing to delete any book ever lent |
 | Rules in Rails validations and in PostgreSQL constraints | Validations give readable `422`s; constraints keep the data valid when validations are bypassed | Validations alone, which concurrent writes and other code can skip |
-| Row locks on borrow, withdraw and return | Two staff members acting on one book get one success and one `409` | Checking in Ruby without a lock, which loses a race |
+| Row locks on borrow, withdraw and return | Two staff members borrowing one book, or borrowing and withdrawing it, get one success and one `409` | Checking in Ruby without a lock, which loses a race |
 | Command and query objects grouped by area | Each use case reads top to bottom in one file, and controllers stay a few lines long | Fat models mixing several workflows, or full DDD, which four tables do not need |
 | One error format, mapped in one place | Clients and docs see a single documented shape | A custom `{error: ...}` body per controller |
 | Cursor pagination with a `Link` header | Stable while rows are added, and no count query per page | Page numbers with a total count |
@@ -234,6 +234,6 @@ Left out on purpose: Redis-backed queues, pagination and soft-delete gems, resul
 <details>
 <summary>Production configuration</summary>
 
-The Dockerfile has a `production` target. It requires `SECRET_KEY_BASE`, `DATABASE_URL`, `APP_HOSTS`, `SMTP_ADDRESS` and `MAILER_FROM`. Optional: `SMTP_PORT`, `SMTP_USERNAME` and `SMTP_PASSWORD`, plus `RAILS_MAX_THREADS`, `JOB_THREADS`, `JOB_CONCURRENCY` and `RAILS_LOG_LEVEL` for tuning. Run `bin/rails db:prepare`, the web process and `bin/jobs`. TLS must end at a trusted proxy. The target is smoke-tested, not a complete deployment setup.
+The Dockerfile has a `production` target. It requires `SECRET_KEY_BASE`, `DATABASE_URL`, `APP_HOSTS`, `SMTP_ADDRESS` and `MAILER_FROM`. Optional: `SMTP_PORT`, `SMTP_USERNAME` and `SMTP_PASSWORD`, plus `PORT`, `RAILS_MAX_THREADS`, `JOB_THREADS`, `JOB_CONCURRENCY` and `RAILS_LOG_LEVEL` for tuning. Requests for a host not in `APP_HOSTS` get `403`. Run `bin/rails db:prepare`, the web process and `bin/jobs`. TLS must end at a trusted proxy. The target is smoke-tested, not a complete deployment setup.
 
 </details>
