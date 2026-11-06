@@ -1,45 +1,131 @@
 # Bookcase API
 
-A JSON API for library staff, built with Rails 8.1 and PostgreSQL 18.
+A Rails API for library staff to manage physical books, register readers, and track borrowing history. Books are borrowed for 30 days, with email reminders three days before the due date and on the day itself.
 
-The Rails namespace and image tags use Bookcase. The Compose project and local database names retain `library-api` / `library_api_*` to preserve existing volumes and data.
+Ruby 4.0.9 · Rails 8.1 · PostgreSQL 18 · Solid Queue
 
-## Run
+## Run it
+
+From the repository root, with Docker and Docker Compose v2 installed:
 
 ```sh
 docker compose up
 ```
 
-Open http://localhost:3000/docs for the generated API reference. Compose prepares five books and three readers, then starts Rails and the background worker. Development emails are saved under `tmp/mails` in the worker; previews are at `/rails/mailers`.
+Open [localhost:3000](http://localhost:3000) for the interactive API reference. No local Ruby, database, SMTP account or environment file is needed. Compose starts PostgreSQL, prepares and seeds the database, then starts Rails and the job worker. If the ports are occupied:
 
-## API
+```sh
+PORT=3001 DB_PUBLISHED_PORT=5434 docker compose up
+```
 
-All resource routes now live under `/api/v1`; the earlier unversioned routes are removed.
+First boot seeds five books (`000001`–`000005`) and three readers (`100001`–`100003`). The first two books demonstrate reminders, the third has history, and the last two are available. Seed dates are relative to first boot.
+
+`docker compose down` preserves data. `docker compose down -v` permanently removes this stack's database and saved emails. Rebuild after code changes with `docker compose up --build`.
+
+### Try a borrowing
+
+With fresh demo data, `curl` and `jq`: add, borrow, return, inspect history, then withdraw.
+
+```sh
+api=http://localhost:3000/api/v1
+curl -fsS -X POST "$api/books" -H 'Content-Type: application/json' \
+  -d '{"serial_number":"000006","title":"Hyperion","author":"Dan Simmons"}'
+
+borrowing_id=$(curl -fsS -X POST "$api/books/000006/borrowings" \
+  -H 'Content-Type: application/json' -d '{"card_number":"100003"}' | jq -er .id)
+
+curl -fsS -X POST "$api/borrowings/$borrowing_id/return"
+curl -fsS "$api/books/000006" | jq
+curl -fsS -X DELETE "$api/books/000006"
+```
+
+Expect `201`, `201`, `200`, `200`, then `204`. The serial number cannot be reused after withdrawal.
+
+### See the emails
+
+Development emails go to a shared volume, not real addresses. Trigger reminders without waiting:
+
+```sh
+docker compose exec web bin/rails runner 'ScheduleDueRemindersJob.perform_later'
+# After the worker processes the jobs:
+docker compose exec web sh -c 'cat tmp/mails/*'
+```
+
+A fresh database produces two reminders. [Mailer previews](http://localhost:3000/rails/mailers) show HTML and text templates without jobs.
+
+## API and documentation
+
+Paths below start with `/api/v1`. Serial and card numbers are six-digit strings, preserving leading zeros.
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET, POST | `/api/v1/books` | List or add books |
-| GET, DELETE | `/api/v1/books/{serial_number}` | Read full history or withdraw |
-| POST | `/api/v1/books/{serial_number}/borrowings` | Borrow for a registered reader |
-| GET | `/api/v1/borrowings/{id}` | Read a borrowing |
-| POST | `/api/v1/borrowings/{id}/return` | Return that borrowing |
-| GET, POST | `/api/v1/readers` | List or register readers |
-| GET | `/api/v1/readers/{card_number}` | Read a reader |
+| GET | `/books` | List books with availability and current borrowing |
+| POST | `/books` | Add a physical copy |
+| GET | `/books/{serial_number}` | Read a book and its full borrowing history |
+| DELETE | `/books/{serial_number}` | Withdraw an available book |
+| POST | `/books/{serial_number}/borrowings` | Borrow for a registered reader |
+| GET | `/borrowings/{id}` | Read one borrowing |
+| POST | `/borrowings/{id}/return` | Return that borrowing |
+| GET, POST | `/readers` | List or register readers |
+| GET | `/readers/{card_number}` | Read a reader |
 
-Book and reader numbers are six-digit strings. Text is trimmed without changing internal whitespace or Unicode; control characters are rejected. Email validation uses Ruby's standard pattern. Lists use `limit` and `after`, with a next-page Link header. Books can be filtered by `status`. Errors use problem JSON; the reference documents response bodies and status codes.
+Filter books by `status=available`, `borrowed` or `withdrawn`; withdrawn books are excluded by default. Lists accept `limit` (default 50, maximum 100) and `after`; the `Link` header points to the next page.
 
-Creates return 201 with Location. Duplicate serial numbers, card numbers and emails return 409, even when the request is identical. Repeated borrowing requests also return 409. Returns and withdrawals remain idempotent. Unknown routes and unsupported methods return 404. Request-size enforcement belongs to Puma; server-level errors may use its own format.
+Creates include a `Location` header. Duplicate identifiers or an unavailable book return `409`. Repeated returns and withdrawals are safe. Invalid attributes return `422`; malformed requests return `400`. Application errors share the `application/problem+json` format. `/health/live` checks the process; `/health/ready` also checks PostgreSQL.
 
-## Decisions
+[Scalar at `/docs`](http://localhost:3000/docs) provides examples and interactive calls. `script/docs` generates the [OpenAPI contract](public/openapi/v1.yaml) from request specs; tests check route coverage and examples. Scalar needs internet access; the YAML is local at `/openapi/v1.yaml`.
 
-Commands in `app/domains` own writes and transactions; controllers translate HTTP; Alba serializers define response shapes. Queries preload related records. PostgreSQL constraints and row locks protect competing writes.
+## Architecture and decisions
 
-Availability is derived from the active borrowing. Returns target a borrowing id, so a repeated old return cannot close a newer borrowing. Withdrawals keep history and reserve the serial number. History includes the reader's card number, full name and email. UUIDv7 identifies internal records; staff use serial and card numbers.
+One Rails application and one PostgreSQL database, shared by application data and Solid Queue. No Redis, separate read store or service framework.
 
-Borrowings last 30 calendar days in Europe/Warsaw. An hourly daytime scheduler queues reminder deliveries separately, three days before the due date and on the due date. Due-soon reminders can catch up before the due date. Reminders remain pending until sent; temporary failures retry and other failures surface through the job backend. Sending and recording delivery are not atomic, so a crash between them can duplicate an email. Authentication is omitted for this task.
+| Layer | Responsibility |
+|---|---|
+| `app/controllers/api/v1` | Validate request shapes, call a use case, render HTTP |
+| `app/domains` | Commands for writes; queries for lists, grouped by catalog, circulation, membership and notifications |
+| `app/models` | Associations, normalization, validations and small domain rules |
+| `app/serializers/api/v1` | Explicit JSON shapes through Alba |
+| `app/jobs`, `app/mailers` | Queue scheduling and email delivery through Action Mailer |
 
-The simplification migration replaces historical overlap exclusion with one-active-borrowing uniqueness and removes reminder failure timestamps. It preserves borrowings and reminders, but cannot restore the old failure timestamps on rollback. Previously failed reminders may retry within their delivery window; rollback requires non-overlapping borrowing history.
+Start with [BorrowBook](app/domains/circulation/borrow_book.rb), the [race tests](spec/integration/concurrency_spec.rb) and [request specs](spec/requests/api/v1/books_spec.rb). [Diagrams](docs/diagrams.md) show the flows.
 
-## Checks
+- **Model the borrowing, not a mutable status flag.** Availability comes from the active borrowing. Returning by borrowing id prevents a repeated old return from closing a newer checkout.
+- **Withdraw rather than erase.** History is part of the brief. A withdrawn book remains readable but cannot be lent; its serial number is never reused. Borrowed books must be returned before withdrawal.
+- **Let PostgreSQL enforce invariants.** Unique identifiers, foreign keys and checks protect stored data. A partial unique index allows one active borrowing per book. Row locks make borrow, withdraw and return safe under competing requests; real two-connection tests verify this.
+- **Keep HTTP out of workflows.** Commands return records or raise specific errors; one concern maps errors to HTTP responses. Queries preload associations; Alba defines response shapes.
+- **Record delivery, not enqueueing.** An hourly 09:00–21:00 Warsaw scheduler queues pending reminders. A unique borrowing/kind pair and queue concurrency control prevent ordinary duplicate deliveries. `sent_at` is written only after delivery succeeds; transient failures retry. Missed three-day reminders can catch up before the due date.
 
-With Ruby installed, start PostgreSQL with `docker compose up -d db`, then run `DB_PORT=5433 RAILS_ENV=test bin/rails db:test:prepare` and `DB_PORT=5433 bundle exec rspec`. `script/docs` regenerates OpenAPI from the request specs. The suite includes constraint checks and two-connection borrowing, return and withdrawal races.
+## Checks and local development
+
+With Compose running, execute the suite without installing Ruby locally:
+
+```sh
+docker compose exec web sh -c 'bin/rails db:test:prepare && COVERAGE=1 bundle exec rspec'
+```
+
+For host development, install the Ruby version in `.ruby-version`, Bundler and Git:
+
+```sh
+docker compose up -d db
+bin/setup --skip-server
+bin/rails server
+# In another terminal, for reminder processing:
+bin/jobs
+```
+
+`bin/rubocop` runs lint; `bin/ci` runs all CI checks. `script/smoke` tests isolated development and production containers and needs Docker, `curl` and `jq`. Tests cover responses, constraints, query counts, races and the reminder lifecycle, with a 100% application line/branch coverage gate. Coverage is not proof of correctness. [AGENTS.md](AGENTS.md) records contribution conventions.
+
+## Scope and limitations
+
+Each serial identifies one copy. Due dates use Europe/Warsaw calendar days; timestamps use UTC. Authentication is omitted as allowed by the brief: do not expose this API publicly without staff access controls. Lost books, renewals, borrowing limits and overdue reminders are out of scope.
+
+Email is not exactly-once: a crash between sending and recording success can duplicate a message; a prolonged outage can miss one. History is unpaginated, and historical interval overlap is not database-enforced.
+
+<details>
+<summary>Existing installations and production configuration</summary>
+
+The Compose project and local database names retain `library-api` / `library_api_*` to preserve existing volumes after the Bookcase rename. The simplification migration removes `failed_at` history and retries previously failed reminders within their delivery window; rollback cannot recover those timestamps and requires non-overlapping borrowing history.
+
+The Dockerfile also has a `production` target. It requires `SECRET_KEY_BASE`, `DATABASE_URL`, `APP_HOSTS`, `SMTP_ADDRESS` and `MAILER_FROM`; SMTP credentials and port are optional. Run `bin/rails db:prepare`, the web process and `bin/jobs`. TLS must terminate at a trusted proxy. This target is smoke-tested, not a complete deployment setup.
+
+</details>
