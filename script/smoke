@@ -53,6 +53,9 @@ step "the test suite passes inside the development image"
 docker compose exec -T web sh -c 'bin/rails db:test:prepare && bundle exec rspec' > /dev/null
 docker compose exec -T web bin/rails runner 'abort "Unexpected reminder deliveries" unless Reminder.where.not(sent_at: nil).count == 2 && Dir.glob(Rails.root.join("tmp/mails/*")).sum { |path| File.read(path).scan(/^Message-ID:/i).size } == 2'
 
+step "the web server answers its own errors in the problem format"
+[[ $(curl --silent --output /dev/null --write-out '%{http_code} %{content_type}' -X FOO "$base/api/v1/books") == "501 application/problem+json" ]]
+
 step "the production image serves the API and runs the worker"
 docker build --quiet --target production --tag bookcase-api:production . > /dev/null
 production_env=(
