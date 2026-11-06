@@ -33,7 +33,7 @@ script/smoke                   # Docker end to end, takes minutes; run after Doc
 bundle exec annotaterb models  # refresh model schema annotations after a migration
 ```
 
-Local PostgreSQL defaults to port 5433. Tests always use the test environment; race specs delete test rows.
+`compose.yml` sets `pull_policy: build`, so every `docker compose up` rebuilds the app image from the checkout instead of reusing a stale image with the same tag; keep it. Local PostgreSQL defaults to port 5433. Tests always use the test environment; race specs delete test rows.
 
 A change is complete when lint and the full coverage-gated suite pass, affected documentation matches, and generated OpenAPI is current. Run `script/docs` after changing routes, serializers or request specs. Run `bin/ci` before pushing and never skip git hooks. Preserve existing data; do not reset development databases to apply migrations. Push only when asked, and never force-push or rewrite commits that are already pushed.
 

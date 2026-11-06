@@ -27,7 +27,7 @@ cd bookcase-api
 docker compose up
 ```
 
-Open [localhost:3000](http://localhost:3000): it redirects to the interactive API docs. Compose starts PostgreSQL, migrates and seeds the database, and runs the web server and the job worker. If port 3000 is taken, pick another one: `PORT=3001 docker compose up`. `docker compose down -v` starts over with a fresh database.
+Open [localhost:3000](http://localhost:3000): it redirects to the interactive API docs. Compose starts PostgreSQL, migrates and seeds the database, and runs the web server and the job worker. Every `docker compose up` rebuilds the image from the current code, so changes and `git pull` need no extra flags. If port 3000 is taken, pick another one: `PORT=3001 docker compose up`. `docker compose down -v` starts over with a fresh database.
 
 **Run locally**
 
